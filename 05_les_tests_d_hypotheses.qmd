@@ -1,0 +1,17 @@
+---
+title: "Chapitre 5 : Les tests d'hypothèses"
+---
+\newpage
+
+# Avant de commencer
+
+Ce chapitre reprends les codes du chapitre 5 sur ***les tests d'hypothèses*** du livre **Langage R et Statistiques** : *Initiation à l'analyse de données* publié par les [éditions ENI](https://www.editions-eni.fr/livre/langage-r-et-statistiques-initiation-a-l-analyse-de-donnees-9782409036934) (2^ème^ édition).
+  
+```{r}
+#| label: import_packages
+
+library(tidyverse)
+```
+  
+
+

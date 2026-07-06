@@ -1,0 +1,586 @@
+---
+title: "Chapitre 4 : La régression"
+---
+
+\newpage
+
+# Avant de commencer
+
+Ce chapitre reprends les codes du chapitre 4 sur ***la régression*** du livre **Langage R et Statistiques** : *Initiation à l'analyse de données* publié par les [éditions ENI](https://www.editions-eni.fr/livre/langage-r-et-statistiques-initiation-a-l-analyse-de-donnees-9782409036934) (2^ème^ édition).
+
+```{r}
+#| label: import_packages
+
+library(tidyverse)
+```
+
+# Régression linéaire simple
+
+## graphique pour visualiser les moindres carrés
+
+```{r}
+#| label: graph_moindre_carres
+
+ggplot(iris) +
+  aes(
+    x = Petal.Length,
+    y = Petal.Width
+  ) +
+  geom_point() +
+  geom_segment(
+    aes(
+      x = Petal.Length,
+      xend = Petal.Length,
+      y = Petal.Width,
+      yend = 0.416 * Petal.Length - 0.363
+    ),
+    linetype = "dotted",
+    color = "red"
+  ) +
+  geom_abline(slope = 0.416, intercept = -0.363, color = "blue", size = 1) +
+  theme_classic()
+
+```
+
+## modèle linéaire regression simple
+
+```{r}
+#| label: regression_lineaire
+
+
+regression_lineaire <- lm(
+  formula = Petal.Width ~ Petal.Length, 
+  data = iris
+  )
+
+summary(regression_lineaire)
+
+```
+
+## représentation graphique pour données autre que linéaires
+
+```{r}
+#| label: r_carre
+
+
+purrr::map2(
+  .x = c("x1", "x2", "x3", "x4"),
+  .y = c("y1", "y2", "y3", "y4"),
+  .f = ~ ggplot(anscombe) +
+    aes(x = get(.x), y = get(.y)) +
+    geom_point() +
+    geom_abline(slope = 0.5, intercept = 3, color = "blue") +
+    annotate(
+      "text",
+      x = 14,
+      y = 3, 
+      label = "y ~ 0,5 * x + 3 \n R² = 0.63 \n p-valeur < 0.01"
+    ) + 
+    labs(x = .x, y = .y) +
+    coord_cartesian(xlim = c(5, 19), ylim = c(0,13)) +
+    theme_classic()
+)|> 
+  purrr::map2(
+    .y = c("img/04Rl03N.png", "img/04Rl03bisN.png", "img/04Rl03terN.png", "img/04Rl03quaN.png"),
+    .f = ~ ggsave(plot = .x, filename = .y, width = 6, height = 6, units = "cm")
+  )
+
+purrr::map2(
+  .x = c("x1", "x2", "x3", "x4"),
+  .y = c("y1", "y2", "y3", "y4"),
+  .f = ~ lm(get(.y) ~ get(.x), data = anscombe) |> summary()
+)
+
+```
+
+## Normalité des résidus
+
+```{r}
+#| label: normalite_residus
+
+shapiro.test(regression_lineaire$residuals)
+
+tibble(
+  residus = regression_lineaire$residuals
+) |> 
+  ggplot() +
+  aes(sample = residus) +
+  geom_qq() +
+  geom_qq_line(color = "dark red", size = 1) +
+  theme_classic()
+
+```
+
+## homogéinité
+
+```{r}
+#| label: homogeinite_des_residus
+
+plot(regression_lineaire, which = 3)
+
+```
+
+## intervalle de confiance
+
+```{r}
+#| label: intervalle_de_confiance
+
+iris|> 
+  ggplot() + 
+  aes(
+    x = Petal.Length,
+    y = Petal.Width
+    ) +
+  geom_point() +
+  geom_point(aes(y = predict(regression_lineaire)), shape = 17, color = "gold") +
+  geom_point(
+    data = tibble(
+      Petal.Length = seq(2, 2.9, 0.1),
+      Petal.Width = predict(regression_lineaire, newdata = data.frame(Petal.Length = seq(2, 2.9, 0.1)))
+    ),
+    color = "dark red",
+    shape = 15
+    ) +
+  geom_line(aes(y = predict(regression_lineaire, interval = c("confidence"))[, 2]), color = "blue") +
+  geom_line(aes(y = predict(regression_lineaire, interval = c("confidence"))[, 3]), color = "blue") +
+  geom_line(aes(y = predict(regression_lineaire, interval = c("prediction"))[, 2]), color = "darkgreen", linetype = "dotted") +
+  geom_line(aes(y = predict(regression_lineaire, interval = c("prediction"))[, 3]), color = "darkgreen", linetype = "dotted") +
+  theme_classic()
+
+ggsave("img/04Rl07N.png", width = 14, height = 7, units = "cm")
+
+```
+
+# Régression polynomiale
+
+## graphique
+
+```{r}
+ggplot(mtcars) + 
+  aes(y = mpg, x = disp) +
+  geom_point() +
+  theme_classic()
+```
+
+## régression linéaire
+
+```{r}
+regression_lineaire_cars <- lm(mpg ~ disp, data = mtcars)
+summary(regression_lineaire_cars)
+```
+
+vérification de normalité des résidus
+
+```{r}
+shapiro.test(regression_lineaire_cars$residuals)
+```
+
+## régression polynomiale
+
+```{r}
+regression_polynomiale <- lm(mpg ~ I(disp^2) + disp, data = mtcars)
+summary(regression_polynomiale)
+```
+
+vérification normalité des résidus
+
+```{r}
+shapiro.test(regression_polynomiale$residuals)
+```
+
+vérification homogénéité
+
+```{r}
+plot(regression_polynomiale, which = 3)
+```
+
+## comparaison des deux modèles
+
+```{r}
+AIC(regression_lineaire_cars, regression_polynomiale)
+anova(regression_lineaire_cars, regression_polynomiale)
+```
+
+```{r}
+ggplot(mtcars) + 
+  aes(y = mpg, x = disp) +
+  geom_point() +
+  geom_smooth(method = lm, formula = y ~ x, colour="blue", se = FALSE, linetype = "longdash") +
+  geom_smooth(method = lm, formula = y ~ x + I(x^2), color = "red", se = FALSE) +
+  theme_classic()
+
+ggsave("img/04Rl16N.png", width = 14, height = 7, units = "cm")
+    
+
+```
+
+# Régression exponentielle
+
+## graphique
+
+```{r}
+#| label: regression_expo
+
+intervalle <- seq(-2.5, 3.5, 0.01)
+
+tibble(
+  X = rep(intervalle, 2),
+  Y = c(exp(intervalle), log(intervalle)),
+  fonction = rep(c("exponentielle", "logarithme"), each = length(intervalle))
+)|> 
+  ggplot() +
+  aes(x = X, 
+      y = Y, 
+      color = fonction,
+      linetype = fonction
+      ) +
+  geom_line() +
+  geom_segment(
+    aes(x = -2, xend = 3, y = -2, yend = 3), 
+    color = "black",
+    linetype = "solid"
+    ) +
+  xlim(-2, 3) +
+  ylim(-5, 5) +
+  scale_colour_manual(values = c("blue", "red")) +
+  scale_linetype_manual(values = c("longdash", "dotted")) +
+  theme_classic()
+
+ggsave("img/04Rl17N.png", width = 14, height = 7, units = "cm")
+```
+
+## régression exponentielle
+
+```{r}
+regression_exponentielle <- 
+  lm(
+    Ozone ~ exp(Temp), 
+    data = airquality |> 
+      filter(Temp < 86)
+    )
+
+regression_exponentielle |> 
+  summary()
+```
+
+vérification de la normalité
+
+```{r}
+shapiro.test(regression_exponentielle$residuals)
+```
+
+confirmation par un graphique
+
+```{r}
+tibble(
+  residus = regression_exponentielle$residuals
+) |> 
+  ggplot() +
+  aes(sample = residus) +
+  geom_qq() +
+  geom_qq_line(color = "dark red", linewidth = 1) +
+  theme_classic()
+```
+
+```{r}
+plot(regression_exponentielle, which = 3)
+```
+
+```{r}
+airquality |> 
+  filter(Temp < 86) |> 
+  ggplot() +
+  aes(x = Temp, y = Ozone) +
+  geom_jitter() +
+  geom_smooth(method = lm, formula = y ~ exp(x)) +
+  theme_classic()
+
+```
+
+# Régression logistique binomiale
+
+```{r}
+#| label: regression_logistique_binomiale
+
+regression_logistique <- glm(
+  am ~ wt, 
+  data = mtcars,
+  family = "binomial"
+)
+
+summary(regression_logistique)
+```
+
+```{r}
+shapiro.test(regression_logistique$residuals)
+
+tibble(
+  residus = regression_logistique$residuals
+) |> 
+  ggplot() +
+  aes(sample = residus) +
+  geom_qq() +
+  geom_qq_line(color = "dark red", size = 1) +
+  theme_classic()
+
+plot(regression_logistique, which = 2)
+plot(regression_logistique, which = 3)
+```
+
+```{r}
+# version simplifiée
+mtcars |> 
+  mutate(
+    prediction_am = regression_logistique$fitted.values
+    ) |> 
+  ggplot() +
+  aes(x = wt, y = am) +
+  geom_point() +
+  geom_line(aes(y = prediction_am), color = "blue", linewidth = 1) + 
+  theme_classic()
+
+# version annotée
+mtcars |>  
+  rownames_to_column() |> 
+  mutate(
+    prediction_am = regression_logistique$fitted.values,
+    etiquette = case_when(
+      rowname %in% c("Toyota Corona", "Maserati Bora", "Ford Pantera L") ~ rowname
+    )
+  ) |> 
+  ggplot() +
+  aes(x = wt, y = am) +
+  geom_point() +
+  geom_hline(yintercept = 0.5, color = "grey") +
+  geom_vline(xintercept = 3, color = "grey") +
+  geom_line(aes(y = prediction_am), color = "blue", linewidth = 1) + 
+  geom_text(aes(label = etiquette), size = 1.5, nudge_y = 0.05) +
+  theme_classic()
+
+```
+
+# Régression multiple
+
+## Régression multiple avec espèce
+
+```{r}
+regression_multiple_espece <- lm(
+  formula = Petal.Width ~ Petal.Length * Species, 
+  data = iris
+  )
+
+regression_multiple_espece |> 
+  summary()
+
+car::Anova(regression_multiple_espece, type = "3")
+```
+
+vérification du modèle avec espèce
+
+```{r}
+plot(regression_multiple_espece, which = 2)
+plot(regression_multiple_espece, which = 3)
+```
+
+test post-hoc
+
+```{r}
+library(multcomp)
+summary(
+  glht(
+    regression_multiple_espece, 
+    linfct = mcp(
+      Species = "Tukey"
+      )
+    )
+  )
+```
+
+```{r}
+ggplot(iris) +
+  aes(
+    x = Petal.Length, 
+    y = Petal.Width, 
+    color = Species,
+    fill = Species,
+    shape = Species
+    ) +
+  geom_smooth(method = lm, se = FALSE) +
+  geom_point(color = "black") +
+  scale_shape_manual(values = c(21, 22, 25)) +
+  theme_classic()
+
+ggsave("img/04Rl32N.png", width = 14, height = 7, units = "cm")
+```
+
+## modèle initial, régression multiple
+
+```{r}
+regression_multiple <- lm(
+  formula = Petal.Width ~ Petal.Length + I(Sepal.Length^2) + Sepal.Length * exp(Sepal.Width), 
+  data = iris
+  )
+
+car::Anova(regression_multiple, type = "3")
+```
+
+```{r}
+shapiro.test(regression_multiple$residuals)
+
+plot(regression_multiple, which = 3)
+```
+
+deuxième modèle
+
+```{r}
+m2 <- lm(
+  formula = Petal.Width ~ Petal.Length + I(Sepal.Length^2) + Sepal.Length + exp(Sepal.Width), 
+  data = iris
+  )
+
+car::Anova(m2, type = "3")
+
+anova(regression_multiple, m2)
+AIC(regression_multiple, m2)
+```
+
+troisième modèle
+
+```{r}
+m3 <- lm(
+  formula = Petal.Width ~ Petal.Length + I(Sepal.Length^2) + exp(Sepal.Width), 
+  data = iris
+  )
+
+car::Anova(m3, type = "3")
+
+anova(m3, m2)
+AIC(m3, m2)
+```
+
+validation du modèle final
+
+```{r}
+shapiro.test(m3$residuals)
+plot(m3, which = 3)
+
+```
+
+# Regression non paramétrique univariée
+
+## dualité biais-variance
+
+```{r}
+
+ggplot(airquality) +
+  aes(x = Temp, y = Ozone) +
+  geom_point(color = "grey") +
+  geom_smooth(method = "loess", linetype = "twodash", span = 0.2, color = "red", se = FALSE) +
+  geom_smooth(method = "loess", linetype = "dotdash", span = 2, color = "green", se = FALSE) +
+  geom_smooth(method = "loess", span = 0.75, color = "blue", se = FALSE) +
+  theme_classic()
+
+ggsave("img/04Rl39N.png", width = 14, height = 7, units = "cm")
+```
+
+## Ozone \~ Temp
+
+```{r}
+library(gam)
+
+gam_uni <- gam(
+  Ozone ~ lo(Temp),
+  data = airquality
+)
+
+summary(gam_uni)
+```
+
+```{r}
+regression_exponentielle <- lm(Ozone ~ exp(Temp), data = airquality)
+regression_polynomiale <- lm(Ozone ~ Temp + I(Temp^2), data = airquality)
+AIC(gam_uni, regression_exponentielle, regression_polynomiale)
+```
+
+```{r}
+airquality |> 
+  rownames_to_column() |> 
+  full_join(
+    predict(gam_uni) |> 
+      as.data.frame() |> 
+      rownames_to_column() |> 
+      rename(ozone_predit = "predict(gam_uni)")
+  ) |> 
+  ggplot() +
+  aes(x = Temp, y = Ozone) +
+  geom_jitter() +
+  geom_smooth(
+    method = lm, 
+    formula = y ~ exp(x), 
+    data  = airquality |> filter(Temp < 86), 
+    linetype = "twodash",
+    se = FALSE
+    ) +
+  geom_smooth(
+    method = lm, 
+    formula = y ~ x + I(x^2), 
+    color = "green",
+    se = FALSE
+    ) +
+  geom_smooth(
+    aes(y = ozone_predit), 
+    linetype = "longdash",
+    color = "red"
+    ) +
+  theme_classic()
+
+ggsave("img/04Rl42N.png", width = 14, height = 7, units = "cm")
+
+```
+
+## regression_non_parametrique_multivariee
+
+```{r}
+library(gam)
+
+gam_initial <- gam(
+  Ozone ~ lo(Temp) + lo(Wind) + lo(Solar.R) + lo(Day),
+  data = airquality
+)
+
+summary(gam_initial)
+```
+
+gam_2
+
+```{r}
+gam_2 <- gam(
+  Ozone ~ lo(Temp) + lo(Wind) + lo(Solar.R),
+  data = airquality
+)
+
+AIC(gam_initial, gam_2)
+
+summary(gam_2)
+```
+
+gam_3
+
+```{r}
+gam_3 <- gam(
+  Ozone ~ lo(Temp) + lo(Wind),
+  data = airquality
+)
+
+AIC(gam_2, gam_3)
+```
+
+```{r}
+gam_3_bis <- gam(
+  Ozone ~ lo(Temp) + lo(Wind),
+  data = airquality |> filter(!is.na(Solar.R))
+)
+
+AIC(gam_2, gam_3_bis)
+
+```

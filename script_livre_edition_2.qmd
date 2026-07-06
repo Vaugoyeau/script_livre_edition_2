@@ -1,0 +1,7 @@
+---
+title: "Scripts de la deuxième édition de **Langage R et statististiques** : *initiation à l'analyse de données*"  
+---
+
+## Objectifs   
+Reprendre les codes du livre pour mettre à jour  
+  

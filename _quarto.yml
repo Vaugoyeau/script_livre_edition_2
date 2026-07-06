@@ -1,0 +1,12 @@
+project:
+  title: "script_livre_edition_2"
+
+editor: visual
+
+author: "Marie VAUGOYEAU ([contact@marievaugoyeau.fr](mailto:contact@marievaugoyeau.fr))"
+
+format:
+  typst: 
+    toc: true
+    section-numbering: 1.1.a
+    lang: fr
