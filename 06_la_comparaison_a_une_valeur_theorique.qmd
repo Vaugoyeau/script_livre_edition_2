@@ -1,0 +1,462 @@
+---
+title: "Chapitre 6 : La comparaison à une valeur théorique"
+---
+\newpage
+
+# Avant de commencer
+
+Ce chapitre reprends les codes du chapitre 6 sur ***la comparaison à une valeur théorique*** du livre **Langage R et Statistiques** : *Initiation à l'analyse de données* publié par les [éditions ENI](https://www.editions-eni.fr/livre/langage-r-et-statistiques-initiation-a-l-analyse-de-donnees-9782409036934) (2^ème^ édition).  
+  
+```{r}
+#| label: import_packages
+
+library(tidyverse)
+```
+  
+# Théorème central limite  
+```{r}
+
+lancers_des <- 
+  purrr::map(
+    .x = c(1:100),
+    .f = ~ tibble(
+        somme_des = 
+          runif(n = 50, min = 1, max = 6) |> 
+          round() |> 
+          sum()
+      )
+  ) |> 
+  bind_rows()
+
+loi_normale <- tibble(
+  x = seq(140, 200, 1),
+  y = dnorm(x, mean = 175, sd = sqrt(104))
+)
+  
+lancers_des |> 
+  ggplot() +
+  aes(x = somme_des) +
+  geom_density(linewidth = 2) +
+  geom_line(
+    aes(x = x, y = y), 
+    data  = loi_normale, 
+    color = "blue",
+    linetype = "twodash",
+    linewidth = 2
+    ) +
+  labs(x = "somme pour 50 lancers de dé", y = "densité") +
+  theme_classic()
+
+ggsave("img/06Rl01N.png", width = 14, height = 10, units = "cm")
+
+```
+  
+# Comparaison d'une proportion a une valeur théorique  
+##  Exemple de comparaison  
+  
+```{r}
+
+tibble(
+  z = seq(-3, 3, 0.1),
+  "densité" = dnorm(z, mean = 0, sd = 1)
+  ) |> 
+  ggplot() +
+  aes(
+    x = z,
+    y = `densité`
+  ) +
+  geom_line(size = 1) +
+  geom_vline(
+    xintercept = qnorm(0.025), 
+    linewidth = 1, 
+    linetype = "dashed", 
+    color = "blue"
+    ) + 
+  geom_vline(
+    xintercept = qnorm(0.975), 
+    linewidth = 1, 
+    linetype = "dashed", 
+    color = "blue"
+    ) + 
+  geom_vline(
+    xintercept = qnorm(0.05), 
+    linewidth = 1, 
+    linetype = "dotdash", 
+    color = "green"
+    ) + 
+  geom_vline(
+    xintercept = qnorm(0.95), 
+    linewidth = 1, 
+    linetype = "dotted", 
+    color = "orange"
+    ) + 
+  geom_vline(
+    xintercept = -2.3, 
+    color = "red"
+    ) +
+  geom_vline(
+    xintercept = -1.7, 
+    color = "red"
+    ) +
+  geom_vline(
+    xintercept = -0.6, 
+    color = "red"
+    ) +
+  geom_vline(
+    xintercept = 1.9, 
+    color = "red"
+    ) +
+  geom_vline(
+    xintercept = 2.5, 
+    color = "red"
+    ) +
+  annotate("text", x = -2.5, y = 0.4, label = "z1", color = "red") +
+  annotate("text", x = -1.85, y = 0.4, label = "z2", color = "red") +
+  annotate("text", x = -0.75, y = 0.4, label = "z3", color = "red") +
+  annotate("text", x = 1.8, y = 0.4, label = "z4", color = "red") +
+  annotate("text", x = 2.3, y = 0.4, label = "z5", color = "red") +
+  scale_x_continuous(
+    label = c("-1,96", "-1,64","-1", "0", "1", "1,64", "1,96"),
+    breaks = c(qnorm(0.025), qnorm(0.05), -1, 0, 1, qnorm(0.95), qnorm(0.975))
+  ) +
+  theme_classic()
+ggsave("img/06Rl02N.png", width = 14, height = 10, units = "cm")
+
+```
+  
+## Exemple sur les pièces défectueuses  
+comparaison a une proportion test  
+Les valeurs :  
+```{r}
+nbr_piece_defecteuse <- 22
+p_seuil <- 0.2
+n <- 100
+```
+
+statistique de test calculée à la main  
+```{r}
+(z <- (nbr_piece_defecteuse/n - p_seuil)/sqrt((p_seuil*(1-p_seuil))/n))
+```
+
+valeur seuil
+```{r}
+qnorm(0.95)
+```
+
+utilisation de la fonction prop.test
+```{r}
+prop.test(
+  x = nbr_piece_defecteuse,
+  n = n,
+  p = p_seuil,
+  alternative = "greater"
+)
+```
+
+utilisation de la fonction `binom.test()`  
+```{r}
+binom.test(
+  x = nbr_piece_defecteuse,
+  n = n,
+  p = p_seuil,
+  alternative = "greater"
+)
+
+```
+  
+## Exemple sur l'assemblée nationale  
+```{r}
+library(rvest)
+
+html <- read_html("https://www2.assemblee-nationale.fr/deputes/liste/cat-sociopro/(vue)/tableau")
+
+(prop_ass_nat <- html |> 
+  html_elements("table") |> 
+  html_table() |> 
+  bind_rows() |> 
+  count(Civilité))
+```
+
+calcul de la proportion d'hommes à l'Assemblée
+```{r}
+(p_ass <- prop_ass_nat[[1,2]] / sum(prop_ass_nat$n))
+```
+
+population française 1er janvier 2026 : https://www.insee.fr/fr/statistiques/2381474  
+```{r}
+(p_pop <- 33551000 / (35531000 + 33551000))
+```
+
+calcul de la statistique de test
+```{r}
+(z <- (p_ass - p_pop)/sqrt((p_pop*(1-p_pop))/sum(prop_ass_nat$n)))
+```
+
+comparaison aux valeurs de seuil
+```{r}
+z < qnorm(0.025)
+z > qnorm(0.975)
+```
+
+utilisation de la fonction `prop.test()`
+```{r}
+prop.test(
+  x = p_ass,
+  n = sum(prop_ass_nat$n),
+  p = p_pop,
+  alternative = "two.sided"
+)
+```
+
+# Comparaison d'une moyenne à une valeur théorique    
+## distribution de la loi de Student  
+  
+```{r}
+
+# choix de l'intervalle de représentation
+intervalle <- seq(-15, 15, 0.1)
+
+# loi de Student de dégré de liberté égale à 1, 2, 6 et 9
+tibble(
+  loi_student = 
+    rep(
+      c(
+        "df = 1", 
+        "df = 2", 
+        "df = 6", 
+        "df = 9"
+      ), 
+      each = length(intervalle)
+    ),
+  x = rep(intervalle, 4),
+  densite = 
+    c(
+      dt(intervalle, df = 1),
+      dt(intervalle, df = 4),
+      dt(intervalle, df = 6),
+      dt(intervalle, df = 9)
+    )
+) |> 
+  ggplot() +
+  aes(x = x, y = densite, color = loi_student) +
+  geom_line(linewidth = 1) +
+  annotate("text", x = -5, y = 0.05, label = "df = 1", color = "blue") +
+  annotate("text", x = 3, y = 0.35, label = "df = 9", color = "black") +
+  theme_classic() +
+  scale_color_manual(values = c("blue", "dark red", "gold", "black")) +
+  ylab("densité de probabilité (f(x))") +
+  labs(color = "Loi de Student")
+
+ggsave("img/06Rl06N.png", width = 14, height = 10, units = "cm")
+
+```
+
+## Exemple d'utilisation du test de Student   
+calcul_moyenne  
+```{r}
+
+mean(women$weight)
+
+```
+
+vérification de la normalité de la variable
+```{r}
+shapiro.test(women$weight)
+```
+
+test de Student, la masse moyenne de l'échantillon est-elle égale à celle de la population ?
+```{r}
+t.test(
+  x = women$weight,
+  mu = 79.3*2.2
+)
+
+```
+  
+## Test de Student apparié  
+```{r}
+ChickWeight |> 
+  filter(
+    Diet == 1,
+    Time %in% c(0, 2)
+    ) |> 
+  ggplot() +
+  aes(x = Time, y = weight, group = Chick) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+```
+
+création données
+```{r}
+(poulet_croissance <- ChickWeight |> 
+  filter(
+    Diet == 1,
+    Time %in% c(0, 2)
+    ) |> 
+  pivot_wider(
+    id_cols = !Diet,
+    names_from = Time,
+    values_from = weight 
+  ) |> 
+  mutate(difference = `2` - `0`))
+```
+
+
+```{r}
+# test de normalité des données
+shapiro.test(poulet_croissance$difference)
+
+# test de Student apparié à ne pas faire normalement
+t.test(poulet_croissance$`0`, poulet_croissance$`2`, paired = TRUE)
+
+```
+
+
+## Test de Wilcoxon apparié  
+
+```{r}
+# ajout des rangs signés
+(test_wilcoxon <- poulet_croissance |> 
+  filter(difference != 0) |> 
+  arrange(abs(difference)) |> 
+  rowid_to_column(var = "rang") |> 
+  mutate(rang_signe = rang*sign(difference)))
+
+# calcul des paramètres de la statistique de test
+(n <- nrow(test_wilcoxon))
+(somme_rang_positif <- test_wilcoxon |> 
+  filter(rang_signe > 0) |> 
+  summarise(sum(rang_signe)))
+(somme_rang_negatif <- test_wilcoxon |> 
+  filter(rang_signe < 0) |> 
+  summarise(sum(rang_signe)))
+(T_calcule <- min(abs(somme_rang_positif), abs(somme_rang_negatif)))
+
+# calcul de la statistique de test
+(z <- (T_calcule-(n*(n+1))/4)/sqrt((n*(n+1)*(2*n+1))/24))
+
+# conclusion
+z < qnorm(0.05)
+
+# test de wilcoxon apparié
+wilcox.test(poulet_croissance$`0`, poulet_croissance$`2`, paired = TRUE)
+
+```
+
+# Variance comparer à une valeur théorique  
+calcul de la variance
+```{r}
+var(women$weight)
+
+```
+
+comparaison d'une variance à une valeur de reférence  
+```{r}
+# données
+n <- nrow(PlantGrowth)
+var_echantillon <- var(PlantGrowth$weight)
+var_theo <- 0.35
+
+# calcul de la statisique de test
+((n-1)*var_echantillon/var_theo)
+
+# récupération de la valeur seuil pour alpha = 0,05
+qchisq(p = 1-0.05, df = n-1)
+
+```
+
+  
+# Test de Kolmogorov Smirnov  
+comparaison avec le test de kuiper  
+```{r}
+set.seed(1903)
+
+echantillon <- 0.5 + 1.1 * runif(30)
+fonction_repartition <- ecdf(echantillon)
+
+tibble(
+  x = seq(0, 2, 0.1),
+  f = fonction_repartition(x),
+  densite_normale = pnorm(x, mean = 1, sd = 0.2)
+  ) |> 
+  ggplot() +
+  aes(x = x, y = f) +
+  geom_line(linewidth = 1) +
+  geom_line(
+    aes( y = densite_normale),
+    color = "blue",
+    linewidth = 1,
+    linetype = "twodash"
+  ) +
+  annotate("segment", x = 1.2, xend = 1.2, y = 0.667, yend = 0.841, color = "green") + 
+  annotate("segment", x = 0.9, xend = 0.9, y = 0.309, yend = 0.5, color = "red") +
+  annotate("text", x = 1.3, y = 0.4, color = "red", label = "Kolmogorov-Smirnov") +
+  theme_classic()
+
+ggsave("img/06Rl18N.png", width = 14, height = 10, units = "cm")
+
+```
+
+test kolmogorov-smirnov  
+```{r}
+ggplot(cars) +
+  aes(x = speed) +
+  geom_histogram() +
+  theme_classic()
+
+
+ks.test(cars$speed, "pgamma", shape = 14)
+ks.test(cars$speed, "pgamma", shape = 15)
+
+ks.test(cars$speed, "pnorm", mean = 15, sd = 2)
+ks.test(cars$speed, "pnorm", mean = 15, sd = 4)
+```
+
+test kolmogorov-smirnov comparaison
+```{r}
+ks.test(cars$speed, cars$dist)
+```
+
+graphique
+```{r}
+
+fonction_repartition_speed <-  ecdf(cars$speed)
+fonction_repartition_dist <-  ecdf(cars$dist)
+
+bind_rows(
+  cars |> 
+    mutate(
+      distribution_speed = fonction_repartition_speed(speed),
+    ) |> 
+    select(-dist) |> 
+    pivot_longer(
+      !speed,
+      names_to = "type_distribution",
+      values_to = "distribution_cumulative"
+    ) |> 
+    rename("valeur" = "speed"),
+  cars |> 
+    mutate(
+      distribution_dist = fonction_repartition_dist(dist),
+    ) |> 
+    select(-speed) |> 
+    pivot_longer(
+      !dist,
+      names_to = "type_distribution",
+      values_to = "distribution_cumulative"
+    ) |> 
+    rename("valeur" = "dist")
+) |> 
+  ggplot() +
+  aes(x = valeur, y = distribution_cumulative, color = type_distribution) +
+  geom_line(linewidth = 1) +
+  annotate("text", x = 100, y = 0.85, color = "red", label = "distribution de \n la variable DIST") +
+  annotate("text", x = 40, y = 0.9, color = "blue", label = "distribution de \n la variable SPEED") +
+  theme_classic() +
+  theme(legend.position = "none")
+
+ggsave("img/06Rl25N.png", width= 14, height = 10, units = "cm")
+
+```
+  
