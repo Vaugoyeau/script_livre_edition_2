@@ -13,5 +13,263 @@ Ce chapitre reprends les codes du chapitre 5 sur ***les tests d'hypothèses*** d
 library(tidyverse)
 ```
   
+# Test bilatérale, unilatéral droit ou gauche  
+  
+```{r expl_loi_normale_test_bi_uni_lateral}
 
+# choix de l'intervalle de représentation
+intervalle <- seq(-5, 5, 0.1)
+
+# test bilatéral
+tibble(
+  x = intervalle,
+  "densité" = dnorm(intervalle, mean = 0, sd = 1),
+  region = 
+    case_when(
+      x < qnorm(0.025) ~ "région critique basse",
+      x < qnorm(0.975) ~ "région de confiance",
+      TRUE ~ "région critique haute"
+    )
+) |> 
+  ggplot() +
+  aes(x = x, y = `densité`) +
+  geom_line(linewidth = 1) +
+  geom_area(aes(fill = region)) +
+  scale_fill_manual(values = c("blue", "red", "green")) +
+  geom_vline(xintercept = qnorm(0.025), linewidth = 1, linetype = "dashed") + 
+  geom_vline(xintercept = qnorm(0.975), linewidth = 1, linetype = "dashed") + 
+  annotate("text", x = -4, y = 0.06, label = "2,5 % \n des valeurs") +
+  annotate("text", x = 4, y = 0.06, label = "2,5 % \n des valeurs") +
+  annotate("text", x = 0, y = 0.1, label = "95 % des \n valeurs") +
+  theme_classic()
+  
+ggsave("img/05Rl01N.png", width = 14, height = 6, units = "cm")
+
+# test unilatéral à gauche
+tibble(
+  x = intervalle,
+  "densité" = dnorm(intervalle, mean = 0, sd = 1),
+  region = 
+    case_when(
+      x < qnorm(0.05) ~ "région critique basse",
+      TRUE ~ "région de confiance"
+    )
+)  |> 
+  ggplot() +
+  aes(x = x, y = `densité`) +
+  geom_line(size = 1) +
+  geom_area(aes(fill = region)) +
+  scale_fill_manual(values = c("blue", "green")) +
+  geom_vline(xintercept = qnorm(0.05), linewidth = 1, linetype = "dashed") + 
+  annotate("text", x = -3.5, y = 0.15, label = "5 % des \n valeurs", size = 3) +
+  annotate("text", x = 2.5, y = 0.35, label = "95 % des \n valeurs", size = 3) +
+  theme_classic() +
+  theme(legend.position = "none")
+ggsave("img/05Rl01bisN.png", width = 6, height = 6, units = "cm")
+
+# test unilatéral à droite
+tibble(
+  x = intervalle,
+  "densité" = dnorm(intervalle, mean = 0, sd = 1),
+  region = 
+    case_when(
+      x > qnorm(0.95) ~ "région critique haute",
+      TRUE ~ "région de confiance"
+    )
+)  |> 
+  ggplot() +
+  
+  aes(x = x, y = `densité`) +
+  geom_line(size = 1) +
+  geom_area(aes(fill = region)) +
+  scale_fill_manual(values = c("red", "green")) +
+  geom_vline(xintercept = qnorm(0.95), linewidth = 1, linetype = "dashed") + 
+  annotate("text", x = 3.5, y = 0.15, label = "5 % des \n valeurs", size = 3) +
+  annotate("text", x = -2.5, y = 0.35, label = "95 % des \n valeurs", size = 3) +
+  theme_classic() +
+  theme(legend.position = "none")
+ggsave("img/05Rl01terN.png", width = 6, height = 6, units = "cm")
+
+```
+  
+# Test de Shapiro-Wild
+limite à 5000
+```{r}
+#| error: true
+
+shapiro.test(rnorm(10000, mean = 5, sd = 3))
+```
+
+exemple réalisation test de Shapiro
+```{r}
+shapiro.test(iris$Petal.Length)
+```
+
+
+```{r}
+ggplot(iris) +
+  aes(x = Petal.Length) +
+  geom_histogram(bins = 35) +
+  theme_classic()
+```
+
+
+```{r}
+ggplot(iris) +
+  aes(x = Petal.Length, fill = Species) +
+  geom_histogram(bins = 35, position = "dodge") +
+  annotate("text", x = 2, y = 17, size = 5, label = "setosa", color = "darkred") +
+  annotate("text", x = 4, y = 13, size = 5, label = "versicolor", color = "darkgreen") +
+  annotate("text", x = 6, y = 11, size = 5, label = "virginica", color = "darkblue") +
+  theme_classic() +
+  theme(legend.position = "none")
+
+ggsave("img/05Rl04N.png", width = 14, height = 10, units = "cm")
+```
+
+
+```{r}
+shapiro.test((iris |> filter(Species == "setosa"))$Petal.Length)
+shapiro.test((iris |> filter(Species != "setosa"))$Petal.Length)
+
+shapiro.test((iris |> filter(Species == "versicolor"))$Petal.Length)
+
+shapiro.test((iris |> filter(Species == "virginica"))$Petal.Length)
+
+```
+  
+# Loi Khi-2  
+```{r}
+
+# choix de l'intervalle de représentation
+intervalle <- seq(0, 20, 0.1)
+
+# loi khi-deux de paramètres k égale à 1, 2, 3, 5 ou 9
+tibble(
+  loi_khi_deux = 
+    rep(
+      c(
+        "k = 1", 
+        "k = 2", 
+        "k = 3", 
+        "k = 5",
+        "k = 9"
+      ), 
+      each = length(intervalle)
+    ),
+  x = rep(intervalle, 5),
+  densite = 
+    c(
+      dchisq(intervalle, df = 1),
+      dchisq(intervalle, df = 2),
+      dchisq(intervalle, df = 3),
+      dchisq(intervalle, df = 5),
+      dchisq(intervalle, df = 9)
+    )
+) |> 
+  ggplot() +
+  aes(x = x, y = densite, color = loi_khi_deux) +
+  geom_line(size = 1) +
+  theme_classic() +
+  scale_color_manual(values = c("blue", "darkred", "darkgreen", "gold", "black")) +
+  annotate("text", x = 3, y = 1, size = 4, color = "blue", label = "Khi-2 de degré 1") +
+  annotate("text", x = 4, y = 0.4, size = 4, color = "darkred", label = "Khi-2 de degré 2") +
+  annotate("text", x = 5, y = 0.26, size = 4, color = "darkgreen", label = "Khi-2 de degré 3") +
+  annotate("text", x = 6, y = 0.19, size = 4, color = "gold", label = "Khi-2 de degré 5") +
+  annotate("text", x = 10, y = 0.14, size = 4, color = "black", label = "Khi-2 de degré 9") +
+  ylab("densité de probabilité (f(x; k))") +
+  theme(legend.position = "none")
+
+ggsave("img/05Rl06N.png", width = 14, height = 10, units = "cm")
+
+```
+
+## Test d'adéquation du khi-2  
+```{r}
+chisq.test(
+  x =  c(86, 111, 107, 91, 105, 100),
+  p = rep(1/6, 6)
+)
+
+chisq.test(
+  x =  c(86,	111, 107,	91,	105, 100)
+)
+
+chisq.test(
+  x = c(4,2)
+)
+
+```
+  
+## Test d'indépendance du Khi-2  
+création du tableau de données
+```{r}
+
+table_genre_naf <- 
+  tibble(
+    categorie_activite = rep(c("AZ", "C1", "C3", "C4", "C5", "DE", "FZ", "GZ", "HZ", "IZ", "JZ", "KZ", "LZ", "MN", "OQ", "RU"), 2),
+    genre = rep(c("F", "H"), each = 16),
+    nbr_salarie_en_milliers = c(79, 249, 106, 67, 392, 87, 173, 1546, 376, 452, 264, 518, 145, 1643, 5603, 873, 194, 341, 304, 267, 994, 290, 1280, 1640, 1034, 513, 540, 348, 100, 1833, 2507, 378)
+  )
+```
+
+création du graphique
+```{r}
+ggplot(table_genre_naf) +
+  aes(
+    x = categorie_activite, 
+    y = nbr_salarie_en_milliers, 
+    fill = genre,
+    color = genre,
+    linetype = genre
+    ) +
+  geom_bar(
+    stat = "identity", 
+    position = "dodge",
+    linewidth = 1,
+    color = "black"
+    ) +
+  scale_fill_manual(values = c("darkgrey", "lightblue")) + 
+  theme_classic()
+
+ggsave("img/05Rl10N.png", width = 14, height = 7, units = "cm")
+```
+
+
+```{r}
+data.frame(
+  Femmes = c(79, 249, 106, 67, 392, 87, 173, 1546, 376, 452, 264, 518, 145, 1643, 5603, 873),
+  Hommes = c(194, 341, 304, 267, 994, 290, 1280, 1640, 1034, 513, 540, 348, 100, 1833, 2507, 378),
+  row.names = c("AZ", "C1", "C3", "C4", "C5", "DE", "FZ", "GZ", "HZ", "IZ", "JZ", "KZ", "LZ", "MN", "OQ", "RU")
+) |> 
+  chisq.test()
+
+```
+
+## Test d'homogénéité  
+```{r}
+library(rvest)
+
+html <- read_html("https://www.insee.fr/fr/statistiques/4768237")
+
+prop_cadre_genre <- html |> 
+  html_element("table") |> 
+  html_table(dec = ",") |> 
+  as_tibble(.name_repair = make.names)
+
+prop_cadre_genre
+
+# exemple pour la sixième table
+(read_html("https://www.insee.fr/fr/statistiques/4768237") |> 
+  html_elements("table"))[[3]] |> 
+  html_table(dec = ",")
+
+# test du KLhi-2 d'homogénéité
+prop_cadre_genre |> 
+  rename(annee = X) |>
+  filter(annee > 1999) |> 
+  select(c(Femmes, Hommes)) |> 
+  chisq.test()
+
+```
 
