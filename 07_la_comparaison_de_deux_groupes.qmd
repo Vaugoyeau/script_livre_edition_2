@@ -1,0 +1,288 @@
+---
+title: "Chapitre 7 : La comparaison de deux groupes"
+---
+\newpage
+
+# Avant de commencer
+
+Ce chapitre reprends les codes du chapitre 7 sur ***la comparaison à une valeur théorique*** du livre **Langage R et Statistiques** : *Initiation à l'analyse de données* publié par les [éditions ENI](https://www.editions-eni.fr/livre/langage-r-et-statistiques-initiation-a-l-analyse-de-donnees-9782409036934) (2^ème^ édition).  
+  
+```{r}
+#| label: import_packages
+
+library(tidyverse)
+```
+  
+# Comparaison de proportion  
+## Test paramétrique  
+```{r}
+
+prop.test(x = c(42, 68), n = c(139,  175))
+
+prop.test(x = c(42, 68, 24), n = c(139, 175, 135))
+
+```
+
+## Test exact de Fisher  
+```{r}
+(genre_ratio_startup <- 
+  matrix(
+    c(1, 2, 5, 7), 
+    nrow = 2,
+    dimnames =
+      list(
+        c("Comite", "Salaries"),
+        c("Femme", "Homme")
+      )
+  ))
+
+fisher.test(genre_ratio_startup)
+```
+
+reprise de l'exemple de la page d'aide de `fisher.test()` : table  Agresti (2002, p. 57) Job Satisfaction  
+```{r}
+(Job <- matrix(
+  c(1,2,1,0, 3,3,6,1, 10,10,14,9, 6,7,12,11), 
+  4, 
+  4,
+  dimnames = 
+    list(
+      salaire = c("< 15k", "15-25k", "25-40k", "> 40k"),
+      satisfaction = c("tres decevant", "un peu decevant", "moderement satisfait", "très satisfait")
+    )
+))
+fisher.test(Job)
+
+```
+  
+## Test de Mac Nemar  
+```{r}
+
+(test_allergene <- matrix(
+  c(23, 14, 84, 59),
+  nrow = 2,
+  dimnames = list(avant_traitement = c("réaction allergique", "réaction non allergique"),
+                  après_traitement =  c("réaction allergique", "réaction non allergique")
+  )
+))
+
+mcnemar.test(test_allergene)
+
+prop.test(test_allergene)
+```
+
+# Comparaison de variances  
+## graphique initial  
+```{r}
+ggplot(iris) +
+  aes(x = Species, y = Petal.Length, color = Species) +
+  geom_jitter() +
+  theme_classic()
+```
+  
+## Test F  
+vérification de la normalité
+```{r}
+filter(mtcars, am == 0)$mpg |> shapiro.test()
+filter(mtcars, am == 1)$mpg |> shapiro.test()
+```
+
+test
+```{r}
+var.test(filter(mtcars, am == 0)$mpg, filter(mtcars, am == 1)$mpg)
+```
+
+## Test de Bartlett  
+iris
+```{r}
+bartlett.test(Petal.Length ~ Species, data = iris)
+```
+ 
+mtcars : vérification de la normalité  
+```{r}
+ggplot(mtcars) +
+  aes(sample = mpg) +
+  geom_qq() +
+  geom_qq_line() +
+  facet_grid(rows = vars(am), cols = vars(vs)) +
+  labs(x = "Forme en 'V' (0 = oui, 1 = non)", y = "Type de transmission (0 = auto, 1 = manuelle)") +
+  theme_classic()
+```
+
+mtcars : test de bartlett
+```{r}
+bartlett.test(mpg ~ interaction(am, vs), data = mtcars)
+```
+
+## Test de Levene  
+vérification de la normalité au sein de chaque espèce
+```{r}
+filter(iris, Species == "setosa")$Petal.Length |> shapiro.test()
+filter(iris, Species == "versicolor")$Petal.Length |> shapiro.test()
+filter(iris, Species == "virginica")$Petal.Length |> shapiro.test()
+```
+
+
+```{r}
+library(car)
+leveneTest(Petal.Length ~ Species, data = iris)
+```
+
+## Test de Fligner-Killeen  
+vérification de la normalité des données pour chaque spray
+```{r}
+purrr::map(
+  .x = LETTERS[1:6],
+  .f = ~ filter(InsectSprays, spray == .x)$count |> shapiro.test()
+) |> 
+  set_names(glue::glue("Insecticide {LETTERS[1:6]}"))
+```
+
+test
+```{r}
+fligner.test(count ~ spray, data = InsectSprays)
+```
+
+# Comparaison de moyennes  
+## Test de Student  
+```{r}
+t.test(filter(mtcars, am == 0)$mpg, filter(mtcars, am == 1)$mpg, var.equal = TRUE)
+t.test(filter(mtcars, am == 0)$mpg, filter(mtcars, am == 1)$mpg, alternative = "less", var.equal = TRUE)
+```
+
+graph
+```{r}
+mtcars |> 
+  mutate(
+    transmission = 
+      case_when(
+        am == 0 ~ "automatique",
+        am == 1 ~ "manuelle"
+      )
+    ) |> 
+  ggplot() +
+  aes(x = transmission, y = mpg, color = transmission) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.5) +
+  theme_classic()
+```
+
+## Test de Welch  
+```{r}
+t.test(Petal.Length ~ Species, data = iris |> filter(Species != "virginica"))
+```
+
+## Test de Wilcoxon  
+graph
+```{r}
+InsectSprays |> 
+  ggplot() +
+  aes(x = spray, y = count, color = spray) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.5) +
+  theme_classic()
+```
+
+test de wilcoxon
+```{r}
+wilcox.test(count ~ spray, data = InsectSprays |> filter(spray %in% c("E", "F")))
+```
+
+# Comparaison de moyenne de plus de deux groupes  
+## Erreurs quand le nombre de test est multiplié  
+```{r}
+tibble(
+  nbr_groupe = 2:10,
+  niveau_confiance = (0.95)^choose(nbr_groupe, 2)
+) |> 
+  ggplot() +
+  aes(x = nbr_groupe, y = niveau_confiance) +
+  geom_line() +
+  theme_classic()
+```
+
+## ANOVA  
+graph explication ANOVA
+```{r}
+iris_moyenne <- iris |> 
+  group_by(Species) |> 
+  summarise(moyenne = mean(Sepal.Length))
+
+ggplot(iris) +
+  aes(x = Species, y = Sepal.Length, color = Species) +
+  geom_jitter(alpha = 0.3) +
+  geom_hline(aes(yintercept = mean(Sepal.Length))) +
+  geom_errorbar(aes(ymin = moyenne, y = 5.84, ymax = moyenne), data = iris_moyenne, linewidth = 1) +
+  geom_spoke(aes(y = moyenne, radius = mean(iris$Sepal.Length) - moyenne, angle = 1.57), data = iris_moyenne, linetype = "dashed") +
+  theme_classic() +
+  theme(legend.position = "none")
+
+ggplot(iris) +
+  aes(x = Species, y = Sepal.Length, color = Species) +
+  geom_jitter(alpha = 0.3) +
+  geom_errorbar(aes(ymin = moyenne, y = 5.84, ymax = moyenne), data = iris_moyenne, linewidth = 1) +
+  geom_spoke(aes(radius = iris_moyenne$moyenne - Sepal.Length, angle = 1.57), data = iris |> group_by(Species) |> slice(3) |> ungroup(), linetype = "dashed") +
+    geom_spoke(aes(radius = iris_moyenne$moyenne - Sepal.Length, angle = 1.57), data = iris |> group_by(Species) |> slice(11) |> ungroup(), linetype = "dashed") +
+  geom_point(data = iris |> group_by(Species) |> slice(c(3, 11)) |> ungroup()) +
+  theme_classic() +
+  theme(legend.position = "none")
+```
+
+vérification de la normalité et de l'homogénéité des variances
+```{r}
+ggplot(iris) +
+  aes(x = Species, y = Sepal.Length, color = Species) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.3) +
+  theme_classic() +
+  theme(legend.position = "none")
+```
+
+réalisation de l'ANOVA
+```{r}
+iris_sepal_length_anova <- aov(Sepal.Length ~ Species, data = iris)
+summary(iris_sepal_length_anova)
+```
+
+validation du test réalisé
+```{r}
+par(mfrow=c(1,2))
+plot(iris_sepal_length_anova, 2)
+plot(iris_sepal_length_anova, 3)
+```
+
+post-hoc
+```{r}
+rstatix::tukey_hsd(iris_sepal_length_anova)
+```
+
+## Test de Kruskal-Wallis  
+```{r}
+kruskal.test(count ~ spray, data = InsectSprays)
+```
+
+Post-hoc de Nemenyi à rajouter
+```{r}
+PMCMRplus::kwAllPairsNemenyiTest(count ~ spray, data = InsectSprays)
+```
+
+graph
+```{r}
+ggplot(InsectSprays) +
+  aes(color = spray, x = count) +
+  geom_freqpoly(bins = 10, linewidth = 1) +
+  labs(x = "nombre d'insectes comptés") +
+  annotate("text", x = 0, y = 6.2, label = "spray C") +
+  annotate("text", x = 4, y = 6.5, label = "spray E") +
+  annotate("text", x = 8.9, y = 5.9, label = "spray D") +
+  annotate("text", x = 17, y = 4.2, label = "spray B") +
+  annotate("text", x = 14, y = 3.2, label = "spray A") +
+  annotate("text", x = 25, y = 2.2, label = "spray F") +
+  theme_classic()
+
+ggsave("img/07Rl32N.png", width = 14, height = 10, units = "cm")
+
+```
+
+
+
