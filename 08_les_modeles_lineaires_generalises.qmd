@@ -1,0 +1,380 @@
+---
+title: "Chapitre 8 : Les modèles linéaires généralisés"
+---
+
+\newpage
+
+# Avant de commencer
+
+Ce chapitre reprends les codes du chapitre 8 sur ***les modèles linéaires généralisés*** du livre **Langage R et Statistiques** : *Initiation à l'analyse de données* publié par les [éditions ENI](https://www.editions-eni.fr/livre/langage-r-et-statistiques-initiation-a-l-analyse-de-donnees-9782409036934) (2^ème^ édition).
+
+```{r}
+#| label: import_packages
+
+library(tidyverse)
+library(multcomp)
+```
+
+# Modèles linéaires classique  
+## ANOVA et lm  
+```{r}
+
+lm(Petal.Length ~ Sepal.Length, data = iris) |> anova()
+aov(Petal.Length ~ Sepal.Length, data = iris) |> anova()
+
+lm(Petal.Length ~ Species, data = iris) |> anova()
+aov(Petal.Length ~ Species, data = iris) |> anova()
+
+```
+
+
+## Test post-hoc de Tukey  
+vérification de la normalité et de l'homogénéité des données  
+```{r}
+ggplot(warpbreaks) +
+  aes(sample = breaks) +
+  geom_qq() +
+  geom_qq_line() +
+  facet_grid(rows = vars(wool), cols = vars(tension)) +
+  labs(x = "tension de fils", y = "laine") +
+  theme_classic()
+```
+
+construction du modèle
+```{r}
+fm1 <- aov(breaks ~ wool + tension, data = warpbreaks)
+summary(fm1)
+```
+
+vérification des résidus
+```{r}
+shapiro.test(fm1$residuals)
+```
+
+test post-hoc {stats}
+```{r}
+TukeyHSD(fm1, "tension")
+```
+
+test post-hoc multcomp
+```{r}
+library(multcomp)
+summary(
+  glht(
+    fm1, 
+    linfct = mcp(
+      tension = "Tukey"
+      )
+    )
+  )
+```
+
+test post-hoc {rstatix}
+```{r}
+rstatix::tukey_hsd(fm1)
+```
+
+### présentation des données en assignant 
+assignation des lettres en fonction du test post-hoc de Tukey  
+```{r}
+lettre_significative <- tibble(
+  lettre = (
+  summary(
+    glht(
+      fm1, 
+      linfct = mcp(
+        tension = "Tukey"
+      )
+    )
+  ) |> 
+    cld())$mcletters$Letters,
+  tension = names(lettre)
+)
+```
+
+réalisation du graphique
+```{r}
+ggplot(warpbreaks) +
+  aes(x = tension, y = breaks, color = tension) +
+  geom_boxplot() + 
+  geom_jitter(alpha = 0.3) +
+  geom_text(
+    aes(x = tension, label = lettre),
+    data = lettre_significative,
+    color = "black",
+    y = 5
+  ) +
+  theme_classic() +
+  coord_cartesian(ylim = c(0,70)) +
+  theme(legend.position = "none")
+  
+ggsave("img/08Rl05N.png", width = 14, height = 10, units = "cm")
+
+```
+
+# glm  
+## régression logistique  
+```{r}
+library(survival)
+
+donnees_survie <- jasa |>  
+  mutate(
+    survie = fustat |> as.factor(),
+    pontage = surgery |> as.factor()
+  )
+```
+
+modèle
+```{r}
+m1 <- glm(
+  formula = survie ~ futime + pontage + age,
+  data = donnees_survie,
+  family = binomial
+  )
+car::Anova(m1, type = "2")
+```
+
+
+```{r}
+m2 <- glm(
+  formula = survie ~ age + futime,
+  data = donnees_survie,
+  family = binomial
+  )
+car::Anova(m2, type = "2")
+AIC(m1, m2)
+
+summary(m2)
+```
+
+loi quasibinomiale en cas de surdispersion
+```{r}
+m3 <- glm(
+  formula = survie ~ age + futime,
+  data = donnees_survie,
+  family = quasibinomial
+  )
+```
+
+représentation graphique
+```{r}
+donnees_survie |> 
+  mutate(
+    prediction_survie_age_seul = 
+      glm(
+        formula = survie ~ age,
+        data = donnees_survie,
+        family = binomial
+      )$fitted.values,
+    prediction_survie = m2$fitted.values
+    ) |> 
+  ggplot() +
+  aes(x = age, y = fustat) +
+  geom_point() +
+  geom_line(aes(y = prediction_survie_age_seul), color = "blue") +
+  geom_line(aes(y = prediction_survie), color = "red") +
+  ylab("survie") +
+  theme_classic()
+
+donnees_survie |> 
+  mutate(
+    prediction_survie_futime_seul = 
+      glm(
+        formula = survie ~ futime,
+        data = donnees_survie,
+        family = binomial
+      )$fitted.values,
+    prediction_survie = m2$fitted.values
+    ) |> 
+  ggplot() +
+  aes(x = futime, y = fustat) +
+  geom_point() +
+  geom_line(aes(y = prediction_survie_futime_seul), color = "blue") +
+  geom_line(aes(y = prediction_survie), color = "red") +
+  ylab("survie") +
+  theme_classic()
+
+
+```
+  
+## régression de poisson  
+### Exemple de la loi de Poisson  
+```{r}
+
+tibble(
+  nbr_individus_observes = 0:6,
+  nbr_de_transect = round(dpois(nbr_individus_observes, lambda = 2)*100)
+) |> 
+  ggplot() +
+  aes(x = nbr_individus_observes, y = nbr_de_transect) +
+  geom_point() +
+  theme_classic()
+ggsave("img/07R11.png")
+
+
+```
+
+### Loi de Poisson, données vélo  
+***à reprendre avec un autre exemple***  
+```{r}
+
+comptage_velo <- read.csv("https://www.data.gouv.fr/fr/datasets/r/7281470c-6d69-4643-a7b1-d1c4fca6bbf2", encoding = "UTF-8") |> 
+  dplyr::select(
+    "Compteur" = "X.U.FEFF.Compteur",
+    Commune,
+    Campagne,
+    Jour,
+    Total
+  ) |> 
+  separate(col = Campagne, into = c("Periode", "An")) |> 
+  mutate(
+    an = An |> as.numeric(),
+    mois = case_when(Periode == "Printemps" ~ "Avril", TRUE ~ "Octobre")
+  ) |> 
+  left_join(
+    tibble(
+      Jour = c("Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"),
+      num_jour = 1:7
+    )
+  ) |> 
+  unite(
+    col = "moment",
+    c(An, mois, num_jour)
+  )
+
+comptage_velo |> 
+  ggplot() +
+  aes(x = moment, y = Total, group = Compteur, color = Compteur) +
+  geom_line() +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  xlab("")
+ggsave("img/07R12.png")
+
+cournon <- comptage_velo |> 
+    filter(
+      Commune == "Cournon-d’Auvergne"
+    )
+
+m1 <- glm(Total ~ an + Periode*Jour, data = cournon, family = poisson)
+car::Anova(m1)
+m2 <- glm(Total ~ Periode*Jour, data = cournon, family = poisson)
+car::Anova(m2)
+AIC(m1, m2)
+
+summary(m2)
+
+m2quasi <- glm(Total ~ Periode*Jour, data = cournon, family = quasipoisson)
+car::Anova(m2quasi)
+
+cournon |> 
+  ggplot() +
+  aes(x = moment, y = Total, group = Compteur) +
+  geom_line() +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  xlab("")
+ggsave("img/07R17.png")
+
+```
+    
+# modèle linéaire mixte  
+## Prise de masse de rats sous trois régimes  
+```{r}
+library(nlme)
+
+BodyWeight |> 
+  ggplot() +
+  aes(x = Time, y = weight, color = Rat) +
+  geom_line() +
+  geom_smooth(se = FALSE, color = "black", linewidth = 2) + 
+  facet_wrap(vars(Diet)) +
+  theme_classic() +
+  theme(legend.position = "none")
+ggsave("img/08Rl18N.png", width = 14, height = 14, units = "cm")
+```
+
+
+```{r}
+glimpse(BodyWeight)
+```
+
+### réalisation du modèle linéaire mixte avec {nlme}  
+```{r}
+lme1 <- nlme::lme(weight ~ Diet*Time, random = ~ 1|Rat, data = BodyWeight)
+car::Anova(lme1, type = "3")
+summary(lme1)
+```
+
+test post-hoc {multcomp}
+```{r}
+summary(
+  glht(
+    lme1, 
+    linfct = mcp(
+      Diet = "Tukey"
+      )
+    )
+  )
+```
+
+vérification de la validité du modèle
+Représentativité globale
+```{r}
+nlme::plot.lme(lme1, weight ~ fitted(.)|Diet, abline = c(0,1))
+```
+
+homogénéité des résidus
+```{r}
+nlme::plot.lme(lme1, resid(.) ~ fitted(.)|Diet, id = 0.01)
+```
+
+normalité des résidus
+```{r}
+qqnorm(lme1, ~ resid(.)|Diet, type = c("p", "r"))
+```
+
+### réalisation du modèle linéaire mixte avec {lme4}  
+```{r}
+lmer1 <- lme4::lmer(weight ~ Diet * Time + (1|Rat) , data = BodyWeight)
+car::Anova(lmer1, type = "3")
+summary(lmer1)
+```
+
+test post-hoc
+```{r}
+summary(
+  glht(
+    lmer1, 
+    linfct = mcp(
+      Diet = "Tukey"
+      )
+    )
+  )
+```
+
+vérification de la validité du modèle
+Représentativité globale
+```{r}
+plot(lmer1, weight ~ fitted(.)|Diet, abline = c(0,1))
+```
+
+homogénéité des résidus
+```{r}
+plot(lmer1, resid(.) ~ fitted(.)|Diet, id = 0.01)
+```
+
+normalité des résidus
+```{r}
+tibble(
+  residus = residuals(lmer1),
+  regime = BodyWeight$Diet
+) |> 
+  ggplot() +
+  aes(sample = residus) +
+  geom_qq() +
+  geom_qq_line(color = "dark red", linewidth = 1) +
+  facet_wrap(~ regime, ncol = 3) +
+  theme_classic()
+```
+  
