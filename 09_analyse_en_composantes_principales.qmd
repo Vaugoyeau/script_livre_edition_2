@@ -1,0 +1,578 @@
+---
+title: "Chapitre 9 : L'analyse en composantes principales"
+---
+
+\newpage
+
+# Avant de commencer
+
+Ce chapitre reprends les codes du chapitre 9 sur ***l'analyse en composantes principales*** du livre **Langage R et Statistiques** : *Initiation à l'analyse de données* publié par les [éditions ENI](https://www.editions-eni.fr/livre/langage-r-et-statistiques-initiation-a-l-analyse-de-donnees-9782409036934) (2^ème^ édition).
+
+```{r}
+#| label: import_packages
+
+library(tidyverse)
+library(FactoMineR)
+```
+
+# Bases mathématiques de l'ACP  
+## Approximation d'une variable par une autre  
+fixation de la graine aléatoire
+```{r}
+set.seed(8)
+```
+
+Création des données  
+```{r}
+exemple_relation_lineaire <- 
+  tibble(
+    x = runif(30, min = 0, max = 10),
+    y = 3 * x + 5 + runif(30, min = -8, max = 10)
+  )
+```
+
+réalisation du modèle  
+```{r}
+modele_lineaire <- lm(y ~ x, exemple_relation_lineaire)
+```
+
+représentation graphique  
+```{r}
+exemple_relation_lineaire |>  
+  ggplot() +
+  aes(x = x, y = y) +
+  geom_point() +
+  theme_classic() +
+  geom_abline(
+    intercept = modele_lineaire$coefficients[1], 
+    slope = modele_lineaire$coefficients[2], 
+    linetype = 3
+    )
+```
+  
+## Ajout de flèches sur la figure précédente pour représenter les dimensions.  
+Création d'une fonction pour calculer y en fonction de x
+```{r}
+calcul_y <- function(valeur_x){
+  
+  if (!is.numeric(valeur_x)) {stop("la valeur renseignée doit-être un nombre")}
+  
+  as.numeric(modele_lineaire$coefficients[1] + modele_lineaire$coefficients[2] * valeur_x)
+  
+}
+```
+
+
+```{r}
+exemple_relation_lineaire |>  
+  ggplot() +
+  aes(x = x, y = y) +
+  geom_point() +
+  theme_classic() +
+  geom_abline(
+    intercept = modele_lineaire$coefficients[1], 
+    slope = modele_lineaire$coefficients[2], 
+    linetype = 4
+    ) +
+  geom_segment(
+    x = 2,
+    y = calcul_y(2),
+    xend = 5,
+    yend = calcul_y(5),
+    arrow = arrow(ends="last"),
+    linewidth = 2,
+    linejoin = "mitre",
+    lineend = "round"
+    ) +
+  geom_text(
+    x = 3,
+    y = calcul_y(3) + 3,
+    label = "Dimension 1",
+    angle = modele_lineaire$coefficients[2] * 10
+    ) +
+  geom_segment(
+    x = 7,
+    y = calcul_y(7),
+    xend = 6,
+    yend = calcul_y(6) * modele_lineaire$coefficients[1]/modele_lineaire$coefficients[2],
+    arrow = arrow(ends="last"),
+    linewidth = 2,
+    linejoin = "mitre",
+    lineend = "round"
+    ) +
+  geom_text(
+    x = 7,
+    y = calcul_y(7) - 3,
+    label = "Dimension 2",
+    angle = modele_lineaire$coefficients[2] * 10
+    )
+```
+  
+  
+## Données centrées-réduites  
+Le but de cette figure est de montrer que la normalisation des données ne change pas la forme du nuage de points mais la réduction oui.  
+```{r}
+exemple_nuage <- exemple_relation_lineaire |>  
+  mutate_all(
+    list(
+    centree = ~ scale(.x, center = TRUE, scale = FALSE) |> 
+      as.numeric(),
+    centree_reduite = ~ scale(.x, center = TRUE, scale = TRUE) |>  
+      as.numeric()
+    )
+  )
+```
+
+représentation graphique  
+```{r}
+centre <- exemple_nuage |>  
+  ggplot() +
+  geom_point(
+    aes(x = x, y = y),
+    color = "grey"
+    ) +
+  geom_point(
+    aes(x = x_centree, y = y_centree)
+    ) +
+  geom_hline(aes(yintercept = 0), linetype = "twodash") +
+  geom_vline(aes(xintercept = 0), linetype = "twodash") +
+  theme_classic() +
+  coord_cartesian(ylim = c(-15, 40), xlim = c(-5, 10))
+
+centre_reduit <- exemple_nuage |>  
+  ggplot() +
+  geom_point(
+    aes(x = x, y = y),
+    color = "grey"
+    ) +
+  geom_point(
+    aes(x = x_centree_reduite, y = y_centree_reduite)
+    ) +
+  geom_hline(aes(yintercept = 0), linetype = "twodash") +
+  geom_vline(aes(xintercept = 0), linetype = "twodash") +
+  theme_classic() +
+  coord_cartesian(ylim = c(-15, 40), xlim = c(-5, 10))
+
+cowplot::plot_grid(
+  centre, 
+  centre_reduit, 
+  labels=c("A", "B"), 
+  ncol = 1, 
+  nrow = 2)
+
+ggsave("img/09Rl04N.png", width = 14, height = 14, units = "cm")
+
+```
+  
+  
+## Matrice de corrélation  
+chargement des données
+```{r}
+data("wine")
+```
+
+représentation graphique  
+```{r}
+cor(wine |>  select(-Label, -Soil)) |>  corrplot::corrplot(type = "upper")
+
+```
+  
+## Représentation des projections de vecteurs  
+création des vecteurs  
+```{r}
+vecteurs <- tibble(
+  vecteur = c("blue", "red", "gold"),
+  A = c(0,0,0),
+  B = c(0.4,0.8,-0.1),
+  C = c(0.9, -0.3, 0.8),
+  type_ligne = c("solid", "dotted", "longdash")
+)
+```
+
+représentation des vecteurs
+```{r}
+ggplot() +
+  aes(x = -1:1, y = -1:1) +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  labs(x = "", y = "") +
+  geom_segment(
+    x = vecteurs$A,
+    y = vecteurs$A,
+    xend = vecteurs$B,
+    yend = vecteurs$C,
+    data = vecteurs,
+    color = vecteurs$vecteur,
+    arrow = arrow(ends="last"),
+    linetype = vecteurs$type_ligne,
+    linewidth = 1,
+    linejoin = "mitre",
+    lineend = "round"
+  ) +
+    geom_segment(
+    x = vecteurs$A,
+    y = vecteurs$A,
+    xend = vecteurs$B,
+    yend = vecteurs$A,
+    data = vecteurs,
+    color = vecteurs$vecteur,
+    arrow = arrow(ends="last"),
+    linetype = vecteurs$type_ligne,
+    linewidth = 1,
+    linejoin = "mitre",
+    lineend = "round"
+  ) +
+  geom_segment(
+    x = vecteurs$B,
+    y = vecteurs$A,
+    xend = vecteurs$B,
+    yend = vecteurs$C,
+    data = vecteurs,
+    color = vecteurs$vecteur,
+    linetype = "dotted"
+  ) +
+  xlim(-0.5,1) +
+  ylim(-0.5,1) +
+  theme_classic()
+ggsave("img/08Rl06N.png", width = 14, height = 10, units = "cm")
+
+```
+  
+# Mise en place de l'ACP  
+## données utilisées  
+```{r}
+data("wine")
+glimpse(wine)
+summary(wine)
+```
+
+## Sélection des variables actives  
+```{r}
+vins <- wine |>  
+  select(-Label, -Soil)
+```
+
+## Réduction des variables  
+```{r}
+
+vins |> 
+  rownames_to_column("Identification_vin") |>  
+  pivot_longer( 
+    !Identification_vin,
+    names_to = "mesure",
+    values_to = "score"
+  ) |> 
+  ggplot() +
+  aes(x = mesure, y = score) +
+  geom_boxplot() +
+  geom_jitter(color = "grey", alpha = 0.3) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle=90)) +
+  coord_cartesian(ylim = c(0,5))
+
+ggsave(
+  "img/09Rl07N.png", width = 14, units = "cm"
+)
+
+```
+
+## Réalisation de l'ACP  
+création de l'acp sur le jeu de données `vins`  
+```{r}
+acp <- PCA(X = vins)
+```
+
+afficher à nouveau le graphique des individus suite à la réalisation de l'ACP
+```{r}
+plot.PCA(acp, choix = "ind")
+```
+
+afficher à nouveau le graphique des variables suite à la réalisation de l'ACP
+```{r}
+plot.PCA(acp, choix = "var")
+```
+
+## Pourcentage d'inertie de toutes les dimensions  
+```{r}
+acp$eig
+```
+
+représentation du pourcentage d'inertie  
+```{r}
+library(factoextra)
+fviz_screeplot(acp, addlabels = TRUE)
+```
+  
+## Fonction `dimdesc()`    
+```{r}
+dimdesc(acp)$Dim.1
+dimdesc(acp)$Dim.2
+```
+  
+## Choix du nombre de dimensions  
+```{r}
+FactoInvestigate::eigenRef(acp)
+FactoInvestigate::inertiaDistrib(acp)
+acp$eig
+```
+
+## ACP avec le nombre de dimensions à interpréter fixé  
+```{r}
+acp <- PCA(
+  X = vins,
+  ncp = 3,
+  graph = FALSE
+  )
+```
+
+## Vérification troisième dimension    
+```{r}
+plot.PCA(acp, axes = c(2, 3), choix = "ind")
+```
+  
+## Vérification des individus extremes  
+```{r}
+acp_sans_extreme <- PCA(
+  X = setdiff(vins, vins[c("1VAU","1ING"), ]),
+  ncp = 3,
+  graph = FALSE
+  )
+
+acp_sans_extreme$eig
+
+dimdesc(acp_sans_extreme)$Dim.1
+dimdesc(acp_sans_extreme)$Dim.2
+dimdesc(acp_sans_extreme)$Dim.3
+
+plot.PCA(acp_sans_extreme, choix = "ind")
+```
+
+## Ajout de variables supplémentaires  
+a réaliser sur le jeu de données d'origine `wine`  
+```{r}
+acp_complete <- PCA(
+  X = wine,
+  ncp = 3,
+  quali.sup = c(1,2),
+  quanti.sup = 
+    (
+      names(wine) |>  
+        stringr::str_locate("before") |>  
+        tibble::as_tibble() |>  
+        rowid_to_column() |>  
+        filter(!is.na(start))
+      )$rowid,
+  graph = FALSE
+  )
+```
+
+nuage des individus
+```{r}
+plot.PCA(acp_complete, choix = "ind")
+ggsave(
+  "img/09Rl18N.png", width = 14, units = "cm"
+)
+```
+
+choix de l'habillage `Label`  
+```{r}
+plot.PCA(acp_complete, choix = "ind", habillage = 1, invisible = "quali")
+ggsave(
+  "img/09Rl19N.png", width = 14, units = "cm"
+)
+```
+
+choix de l'habillage `Soil` 
+```{r}
+plot.PCA(acp_complete, choix = "ind", habillage = 2, invisible = "quali")
+ggsave(
+  "img/09Rl20N.png", width = 14, units = "cm"
+)
+```
+
+traçage des ellipses de confiance autours des modalité
+```{r}
+plotellipses(acp_complete)
+```
+
+seulement la variable `Soil`  
+```{r}
+plotellipses(acp_complete, keepvar = "Soil")
+```
+
+nuage des variables
+```{r}
+plot.PCA(acp_complete, choix = "var")
+```
+
+
+```{r}
+plot.PCA(acp_complete, choix = "var", invisible = "quanti.sup")
+```
+
+
+```{r}
+plot.PCA(acp_complete, choix = "var", invisible = "var")
+```
+
+
+# Cas des données manquantes  
+```{r}
+library(missMDA)
+```
+
+import et visualisation des données  
+```{r}
+data("snorena")
+summary(snorena)
+```
+
+visualisation des données pour lesquels il n'y a aps de données dans la colonne `weight`  
+```{r}
+snorena |>  
+  filter(is.na(weight))
+```
+
+représentation graphique des valeurs manquantes  
+```{r}
+naniar::gg_miss_upset(snorena)
+```
+
+corrélation taille-masse
+```{r}
+ggplot(snorena) + 
+  aes(y = weight, x = size) + 
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_classic()
+
+ggsave(
+  "img/09Rl27N.png", width = 14, units = "cm"
+)
+```
+
+modèle linéaire  
+```{r}
+lm(weight ~ size, data = snorena) |>  summary()
+```
+
+remplacement des données manquantes
+```{r}
+(taille_moyenne <- mean(snorena$size))
+(taille_moyenne <- mean(snorena$size, na.rm = TRUE))
+(masse_moyenne <- mean(snorena$weight, na.rm = TRUE))
+```
+
+
+```{r}
+snorena_mod <- snorena |>  
+  mutate(
+    type = 
+      case_when(
+        is.na(weight) ~ "masse moyenne",
+        is.na(size) ~ "taille moyenne",
+        TRUE ~ "origine"
+      )
+  ) |>  
+  replace_na(
+    list(
+      size = taille_moyenne |>  as.integer(),
+      weight = masse_moyenne |>  as.integer()
+    )
+  )
+```
+
+vérication qu'il n'y ait plsu de valeurs manquantes
+```{r}
+snorena_mod |>  summary()
+```
+
+
+```{r}
+snorena_mod |>  count(type)
+```
+
+graphique
+```{r}
+snorena_mod |>  
+  ggplot() +
+  aes(y = weight, x = size) + 
+  geom_smooth(method = "lm") +
+  geom_point(aes(color = type, shape = type)) +
+  scale_color_manual(values = c("red", "black", "gold")) +
+  annotate("text", x = 200, y = masse_moyenne - 2, label = "masse moyenne", color = "red") +
+  geom_hline(aes(yintercept = masse_moyenne), linetype = "dotted", color = "red") +
+  annotate("text", x = taille_moyenne - 8, y = 120, label = "taille \n moyenne", color = "gold") +
+  geom_vline(aes(xintercept = taille_moyenne), linetype = "dotted", color = "gold") +
+  theme_classic()
+ggsave(
+  "img/09Rl29N.png", width = 14, units = "cm"
+)
+```
+
+estimation du nombre de dimensions nécessaires
+```{r}
+(n <- estim_ncpFAMD(snorena))
+snorena_complete <- imputeFAMD(snorena, ncp = n$ncp)
+```
+
+
+```{r}
+snorena_complete$completeObs |>  
+  mutate(
+    precedement = snorena_mod$type
+  ) |>  
+  ggplot() +
+  aes(y = weight, x = size) + 
+  geom_smooth(method = "lm") +
+  geom_point(aes(color = precedement, shape = precedement)) +
+  scale_color_manual(values = c("red", "black", "gold")) +
+  labs(color = "Précédemment", shape = "Précédemment") +
+  theme_classic()
+ggsave(
+  "img/09Rl30N.png", width = 14, units = "cm"
+)
+```
+
+test jeu de données orange
+```{r}
+data("orange")
+visdat::vis_miss(orange)
+```
+
+imputation multiple  
+```{r}
+orange_imputation_multiple <- MIPCA(orange, ncp = estim_ncpPCA(orange)$ncp)
+```
+
+représentation graphique  
+```{r}
+plot.MIPCA(orange_imputation_multiple)
+```
+  
+# AFC  
+```{r}
+data("children")
+envie_enfant <-  children |>  
+  select(- "thirty", - "fifty", - "more_fifty")
+```
+
+représentation graphique  
+```{r}
+afc <- CA(envie_enfant)
+```
+
+seulement les lignes ou les colonnes
+```{r}
+plot.CA(afc, invisible = "row")
+```
+
+
+```{r}
+plot.CA(afc, invisible = "col")
+```
+
+
+```{r}
+ellipseCA(afc, ellipse = "col")
+```
