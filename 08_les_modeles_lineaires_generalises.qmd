@@ -209,74 +209,84 @@ tibble(
   aes(x = nbr_individus_observes, y = nbr_de_transect) +
   geom_point() +
   theme_classic()
-ggsave("img/07R11.png")
-
-
 ```
 
-### Loi de Poisson, données vélo  
-***à reprendre avec un autre exemple***  
+### Loi de Poisson, données `Insurance`  
+
 ```{r}
+declaration_accident <- MASS::Insurance
 
-comptage_velo <- read.csv("https://www.data.gouv.fr/fr/datasets/r/7281470c-6d69-4643-a7b1-d1c4fca6bbf2", encoding = "UTF-8") |> 
-  dplyr::select(
-    "Compteur" = "X.U.FEFF.Compteur",
-    Commune,
-    Campagne,
-    Jour,
-    Total
-  ) |> 
-  separate(col = Campagne, into = c("Periode", "An")) |> 
-  mutate(
-    an = An |> as.numeric(),
-    mois = case_when(Periode == "Printemps" ~ "Avril", TRUE ~ "Octobre")
-  ) |> 
-  left_join(
-    tibble(
-      Jour = c("Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"),
-      num_jour = 1:7
-    )
-  ) |> 
-  unite(
-    col = "moment",
-    c(An, mois, num_jour)
-  )
-
-comptage_velo |> 
-  ggplot() +
-  aes(x = moment, y = Total, group = Compteur, color = Compteur) +
-  geom_line() +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  xlab("")
-ggsave("img/07R12.png")
-
-cournon <- comptage_velo |> 
-    filter(
-      Commune == "Cournon-d’Auvergne"
-    )
-
-m1 <- glm(Total ~ an + Periode*Jour, data = cournon, family = poisson)
-car::Anova(m1)
-m2 <- glm(Total ~ Periode*Jour, data = cournon, family = poisson)
-car::Anova(m2)
-AIC(m1, m2)
-
-summary(m2)
-
-m2quasi <- glm(Total ~ Periode*Jour, data = cournon, family = quasipoisson)
-car::Anova(m2quasi)
-
-cournon |> 
-  ggplot() +
-  aes(x = moment, y = Total, group = Compteur) +
-  geom_line() +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90)) +
-  xlab("")
-ggsave("img/07R17.png")
-
+glimpse(declaration_accident)
 ```
+
+```{r}
+ggplot(declaration_accident) +
+  aes(x = Claims/log(Holders)) +
+  geom_density() +
+  theme_classic()
+
+ggsave("img/08Rl13N.png", width = 14, height = 10, units = "cm")
+```
+  
+```{r}
+m1 <- glm(
+  Claims ~ Age*District*Group + offset(log(Holders)), 
+  data = declaration_accident, 
+  family = poisson)
+car::Anova(m1)
+```
+
+
+```{r}
+m2 <- glm(
+  Claims ~ Age*District + Age*Group + Group*District + offset(log(Holders)), 
+  data = declaration_accident, 
+  family = poisson)
+car::Anova(m2)
+
+m3 <- glm(
+  Claims ~ Age*Group + Group*District + offset(log(Holders)), 
+  data = declaration_accident, 
+  family = poisson)
+car::Anova(m3)
+
+m4 <- glm(
+  Claims ~ Age*Group + District + offset(log(Holders)), 
+  data = declaration_accident, 
+  family = poisson)
+car::Anova(m4)
+
+m5 <- glm(
+  Claims ~ Age + Group + District + offset(log(Holders)), 
+  data = declaration_accident, 
+  family = poisson)
+car::Anova(m5)
+AIC(m1, m5)
+```
+
+vérification des conditions d'utilisation  
+```{r}
+summary(m5)
+```
+
+representaiton graphique des effets  
+```{r}
+#| fig-height: 7
+plot(
+  effects::allEffects(m5)
+)
+```
+    
+```{r}
+ggplot(declaration_accident) +
+  aes(
+    x = Age,
+    y = Claims/Holders
+  ) +
+  geom_boxplot() +
+  theme_classic()
+```
+
     
 # modèle linéaire mixte  
 ## Prise de masse de rats sous trois régimes  
