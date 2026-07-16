@@ -1,0 +1,887 @@
+---
+title: "Chapitre 3 : Les statistiques"
+---
+
+\newpage
+
+# Avant de commencer
+
+Ce chapitre reprends les codes du chapitre 3 sur ***les statistiques*** du livre **Langage R et Statistiques** : *Initiation à l'analyse de données* publié par les [éditions ENI](https://www.editions-eni.fr/livre/langage-r-et-statistiques-initiation-a-l-analyse-de-donnees-9782409036934) (2^ème^ édition).  
+
+```{r}
+#| label: import_packages
+
+library(tidyverse)
+```
+
+# Prise en main {ggplot2}  
+  
+```{r}
+ggplot(
+  data = iris,
+  mapping = 
+    aes(
+      x = Petal.Length,
+      y = Petal.Width
+    )
+)
+```
+
+
+```{r}
+ggplot(
+  data = iris
+) +
+  aes(
+    x = Petal.Length,
+    y = Petal.Width
+  ) +
+  geom_point()
+```
+
+
+```{r}
+ggplot(
+  data = iris
+) +
+  aes(
+    x = Petal.Length,
+    y = Petal.Width
+  ) +
+  geom_point() +
+  theme_light()
+```
+
+
+
+```{r}
+ggplot(
+  data = iris
+) +
+  aes(
+    x = Petal.Length,
+    y = Petal.Width,
+    color = Species,
+    shape = Species
+  ) +
+  geom_point() +
+  theme_light()
+ggsave("img/03Rl04N.png", width = 14, height = 10, units = "cm")
+```
+
+```{r}
+ggplot(
+  data = iris
+) +
+  aes(
+    x = Petal.Length,
+    y = Petal.Width,
+    color = Species,
+    shape = Species
+  ) +
+  geom_point() +
+  theme_light() +
+  scale_color_manual(
+    values = c("darkred", "blue", "gold")
+  )
+```
+
+
+```{r}
+vecteur_couleur <- c(
+  "setosa" = "#0E7175FF",
+  "versicolor" = "#FD7901FF",
+  "virginica" = "#C35BCAFF"
+)
+
+vecteur_forme <- c(
+  "setosa" = 15,
+  "versicolor" = 16,
+  "virginica" = 17
+)
+
+ggplot(
+  data = iris
+) +
+  aes(
+    x = Petal.Length,
+    y = Petal.Width,
+    color = Species,
+    shape = Species
+  ) +
+  geom_point() +
+  theme_light() +
+  scale_color_manual(
+    values = vecteur_couleur
+  ) +
+  scale_shape_manual(
+    values = vecteur_forme
+    )
+
+ggsave("img/03Rl05Nbis.png", width = 14, height = 10, units = "cm")
+```
+
+# Lois de probabilités   
+## Initiation loi de probabilités : lancer d'une pièce  
+Pour illustrer le comportement des lois de probabilités autours des grands nombres, je vais représenter le nombre de faces pour un nombre croissant de lancers de pièces.  
+
+### création d'un vecteur contenant le nombre de lancers
+```{r}
+nb_lancers <- c(
+  1:9, # 1, 2, 3... 9
+  seq(from = 10, to = 100, by = 10), # 10, 20... 100
+  seq(from = 200, to = 1000, by = 100) # 200, 300... 1000
+)
+```
+
+### 10 simulations pour chaque valeurs de nb_lancers de pièces
+```{r}
+purrr::map(
+  c(1:10),
+  ~ bind_rows(
+    bind_cols(
+      nb_lancers = nb_lancers,
+      nb_lancers |> 
+        purrr::map(
+          ~ rbinom(.x, 1, 0.5)
+        ) |> 
+        purrr::map(sum) |> 
+        purrr::map(as_tibble) |> 
+        bind_rows() |> 
+        rename(nb_faces = value)
+    )
+  )
+) |> 
+  bind_rows() |> # mise en commun des lignes
+  mutate(
+    pourcentage_face = nb_faces /nb_lancers # calcul du pourcentage de réussites
+  ) |> # création du graphique
+  ggplot() + 
+  aes(x = nb_lancers, y = pourcentage_face, group = nb_lancers) +
+  geom_jitter() + # ajout des points
+  scale_x_log10() + # choix d'une échelle logarthmique
+  theme_classic() +
+  labs(
+    x = "Nombre de lancers de pièce (échelle logarithmique)",
+    y = "Nombre de faces (%)"
+  )
+```
+
+
+```{r}
+ggsave("img/03Rl06N.png", width = 14, height = 10, units = "cm")
+```
+  
+## Loto biaisé  
+Pour illustrer, voici l'exemple d'un jeu de loto biaisé où les boules de numérotées de 1 à 49 ont un poids proportionnel à leurs chiffres donc la boule 49 aurait une masse 49 fois supérieure à la boule 1  
+
+```{r}
+# création de la table contenant les données de loto biaisé puis du graphique
+tibble(
+  evenement = c(1:49), # numéro de la boule 1/49
+  densite = c(1:49)/sum(1:49) # probabilité de sortie
+) |> 
+  ggplot() +
+  aes(
+    x = evenement,
+    y = densite
+  ) +
+  geom_polygon( # ajout du polygone vert/gris représentant la probabilité d'obtenir une boule ayant un numéro supérieur ou égale à 20 mais inférieure ou égale à 30
+    data = tibble(
+      x = c(20, 20, 30, 30),
+      y = c(0, 20/sum(1:49), 30/sum(1:49), 0)
+    ), 
+    aes(x = x, y = y), 
+    fill = "light green"
+  ) +
+  geom_point() + # ajout de la probabilité de chaque boule de sortir
+  theme_classic() +
+  xlab("x") +
+  ylab("densité de probabilité (f(x))")
+
+ggsave("img/03Rl07N.png", width = 14, height = 10, units = "cm")
+```
+
+  
+## Loi uniforme 
+### pour un dé équilibré   
+```{r}
+tibble(
+  evenement = c(1:6),
+  probabilite = 1/6
+) |> 
+  ggplot() +
+  aes(
+    x = evenement,
+    y = probabilite
+  ) +
+  geom_point() +
+  theme_classic() +
+  scale_x_continuous(breaks = c(1:6)) +
+  coord_cartesian(ylim = c(0, 0.2)) +
+  xlab("x") +
+  ylab("fonction de masse (p(x))")
+
+ggsave("img/03Rl08N.png", width = 14, height = 10, units = "cm")
+
+```
+  
+### loi de densité uniforme continue
+```{r}
+tibble(
+  evenement = c(0:1),
+  densite = 1
+) |> 
+  ggplot() +
+  aes(
+    x = evenement,
+    y = densite
+  ) +
+  annotate("segment", x = -1, y = 0, xend = 0, yend = 0) +
+  annotate("segment", x = 0, y = 1, xend = 1, yend = 1) +
+  annotate("segment", x = 1, y = 0, xend = 2, yend = 0) +
+  annotate("segment", x = 0, y = 0, xend = 0, yend = 1, linetype = "dotted") +
+  annotate("segment", x = 1, y = 0, xend = 1, yend = 1, linetype = "dotted") +
+  theme_classic() +
+  scale_x_continuous(breaks = c(0,1), labels = c("a", "b")) +
+  scale_y_continuous(breaks = c(0, 1), labels = c("0", "1/(b-a)")) +
+  labs(
+    x = "x",
+    y = "densité de probabilité (f(x))"
+  )
+
+ggsave("img/03Rl09N.png", width = 14, height = 8, units = "cm")
+
+```
+  
+## Loi Binomiale  
+
+```{r}
+# choix de représenter entre 0 et 40
+intervalle <- (0:40)
+
+# loi binomiale avec p = 0.3, 0.5 ou 0.7 et pour 20 ou 40 épreuves de Bernoulli
+tibble(
+  loi_binomiale = 
+    rep(
+      c(
+        "p = 0,3 & n = 20", 
+        "p = 0,5 & n = 20", 
+        "p = 0,5 & n = 40", 
+        "p = 0,7 & n = 40"
+      ), 
+      each = length(intervalle)
+    ),
+  x = rep(intervalle, 4),
+  densite = 
+    c(
+      dbinom(intervalle, prob = 0.3, size = 20),
+      dbinom(intervalle, prob = 0.5, size = 20),
+      dbinom(intervalle, prob = 0.5, size = 40),
+      dbinom(intervalle, prob = 0.7, size = 40)
+      )
+) |> 
+  ggplot() +
+  aes(x = x, y = densite, color = loi_binomiale) +
+  geom_point() +
+  theme_classic() +
+  scale_color_manual(values = c("blue", "darkred", "gold", "black")) +
+  annotate("text", x = 5, y = 0.2, label = "p = 0,3 & n = 20", color = "blue") +
+  annotate("text", x = 16, y = 0.17, label = "p = 0,5 & n = 20", color = "darkred") +
+  annotate("text", x = 20, y = 0.14, label = "p = 0,5 & n = 40", color = "gold") +
+  annotate("text", x = 33, y = 0.16, label = "p = 0,7 & n = 40") +
+  theme(legend.position = "none") +
+  labs(
+    y = "fonction de masse (p(x))"
+    )
+
+ggsave("img/03Rl10N.png", width = 14, height = 8, units = "cm")
+
+```
+  
+  
+## Loi de Poisson   
+```{r}
+# choix de représenter entre 0 et 40
+intervalle <- (0:40)
+
+# loi de poisson de paramètre λ égale à 1, 3, 10 et 20
+tibble(
+  loi_de_poisson = factor(
+    rep(
+      c(
+        "λ = 1", 
+        "λ = 3", 
+        "λ = 10",
+        "λ = 20"
+      ), 
+      each = length(intervalle)
+    ),
+    levels = c(
+      "λ = 1", 
+        "λ = 3", 
+        "λ = 10",
+        "λ = 20"
+    )
+  )
+    ,
+  x = rep(intervalle, 4),
+  densite = 
+    c(
+      dpois(intervalle, lambda = 1),
+      dpois(intervalle, lambda = 3),
+      dpois(intervalle, lambda = 10),
+      dpois(intervalle, lambda = 20))
+) |> 
+  ggplot() +
+  aes(
+    x = x, 
+    y = densite, 
+    color = loi_de_poisson,
+    shape = loi_de_poisson
+    ) +
+  geom_point() +
+  theme_classic() +
+  scale_color_manual(values = c("blue", "darkred", "gold", "black")) +
+  annotate("text", x = 1, y = 0.4, label = "λ = 1", color = "blue") +
+  annotate("text", x = 3, y = 0.25, label = "λ = 3", color = "darkred") +
+  annotate("text", x = 10, y = 0.15, label = "λ = 10", color = "gold") +
+  annotate("text", x = 20, y = 0.12, label = "λ = 20") +
+  ylab("fonction de masse (p(x))") + 
+  theme(legend.position = "none")
+
+
+ggsave("img/03Rl11N.png", width = 14, height = 8, units = "cm")
+
+```
+  
+## Loi normale  
+```{r}
+# choix de l'intervalle de représentation
+intervalle <- seq(-15, 15, 0.1)
+
+# loi normale de paramètres µ égale à -5, -3, 0 ou 3 et σ égale à 2, 0.8, 1 ou 3
+tibble(
+  loi_normale = 
+    rep(
+      c(
+        "µ = 0 & \U03B4 = 1", 
+        "µ = 3 & \U03B4 = 3", 
+        "µ = -3 & \U03B4 = 0.8", 
+        "µ = -5 & \U03B4 = 2"
+      ), 
+      each = length(intervalle)
+    ),
+  x = rep(intervalle, 4),
+  densite = 
+    c(
+      dnorm(intervalle, mean = 0, sd = 1),
+      dnorm(intervalle, mean = 3, sd = 3),
+      dnorm(intervalle, mean = -3, sd = 0.8),
+      dnorm(intervalle, mean = -5, sd = 2))
+) |> 
+  ggplot() +
+  aes(x = x, y = densite, color = loi_normale) +
+  geom_line(linewidth = 1) +
+  theme_classic() +
+  scale_color_manual(values = c("blue", "darkred", "black", "gold")) +
+  annotate("text", x = -8, y = 0.22, label = "µ = -3 & \U03B4 = 0.8", color = "darkred") +
+  annotate("text", x = -3, y = 0.52, label = "µ = -5 & \U03B4 = 2", color = "blue") +
+  annotate("text", x = 1, y = 0.42, label = "µ = 0 & \U03B4 = 1") +
+  annotate("text", x = 5, y = 0.16, label = "µ = 3 & \U03B4 = 3", color = "gold") +
+  ylab("densité de probabilité (f(x))") +
+  theme(legend.position = "none")
+
+ggsave("img/03Rl12N.png", width = 14, height = 8, units = "cm")
+
+```
+  
+
+## Loi exponentielle  
+```{r}
+# choix de l'intervalle de représentation
+intervalle <- seq(0, 5, 0.01)
+
+# loi exponentielle de paramètre λ égal à 0.5, 1, 3 et 5
+tibble(
+  loi_expo = 
+    rep(
+      c(
+        "λ = 0.5", 
+        "λ = 1", 
+        "λ = 3", 
+        "λ = 5"
+      ), 
+      each = length(intervalle)
+    ),
+  x = rep(intervalle, 4),
+  densite = 
+    c(
+      dexp(intervalle, rate = 0.5),
+      dexp(intervalle, rate = 1),
+      dexp(intervalle, rate = 3),
+      dexp(intervalle, rate = 5)
+      )
+) |> 
+  ggplot() +
+  aes(x = x, y = densite, color = loi_expo) +
+  geom_line(linewidth = 1) +
+  annotate("text", x = 0.4, y = 4, label = "λ = 5", color = "gold") +
+  annotate("text", x = 0.65, y = 1, label = "λ = 3") +
+  annotate("text", x = 0.8, y = 0.7, label = "λ = 1", color = "darkred") +
+  annotate("text", x = 3, y = 0.45, label = "λ = 0.5", color = "blue") +
+  annotate("segment", x = log(2) * 1/5, y = dexp(log(2) * 1/5, rate = 5), xend = log(2) * 1/5, yend = 0, linetype = "twodash", color = "gold", linewidth = 1) +
+  annotate("segment", x = log(2) * 1/3, y = dexp(log(2) * 1/3, rate = 3), xend = log(2) * 1/3, yend = 0, linetype = "twodash", color = "black", linewidth = 1) +
+  theme_classic() +
+  annotate("segment", x = log(2), y = dexp(log(2), rate = 1), xend = log(2), yend = 0, linetype = "twodash", color = "dark red", linewidth = 1) +
+  theme_classic() +
+  annotate("segment", x = log(2) * 2, y = dexp(log(2) * 2, rate = 0.5), xend = log(2) * 2, yend = 0, linetype = "twodash", color = "blue", linewidth = 1) +
+  theme_classic() +
+  scale_color_manual(values = c("blue", "dark red", "black", "gold")) +
+  ylab("densité de probabilité (f(x))") +
+  theme(legend.position = "none")
+
+ggsave("img/03Rl13N.png", width = 14, height = 8, units = "cm")
+
+
+```
+  
+  
+# Statistiques descriptives univariées  
+## Type de données  
+```{r}
+classe_fictive <- 
+  tibble(
+    goupe_eleve = rep(1:3, 10),
+    nom_eleve = glue::glue("Nom_{1:30}"),
+    age_eleve = rnorm(n = 30, mean = 9, sd = 0.5) |> round()
+  )
+
+glimpse(classe_fictive)
+
+summary(classe_fictive)
+
+```
+  
+modification de la nature des données.  
+```{r}
+classe_fictive <- 
+  mutate(
+    .data = classe_fictive,
+    goupe_eleve = goupe_eleve |> as_factor(),
+    nom_eleve = nom_eleve |> as.character()
+  )
+
+glimpse(classe_fictive)
+
+```
+
+## variable qualitative  
+Il est conseillé d'aller voir la page d'aide sur le jeu de données avec `?mpg`.  
+
+```{r}
+# type de transmission (f = traction, r = propulsion, 4 = 4 roues motrices)
+mpg |> count(drv)
+
+# ajout d'une colonne pour calculer les proportions de chaque catégories
+mpg |> 
+  count(manufacturer) |> 
+  mutate(prop = round(n*100/nrow(mpg))) |> 
+  arrange(desc(n)) |> 
+  write_csv(
+    file = "data/table_resumee_constructureur.csv"
+    )
+
+```
+   
+### création d'un graphique en barres
+```{r}
+mpg |> 
+  ggplot() +
+  aes(x = class, fill = class) + 
+  geom_bar() +
+  theme_classic() +
+  theme(legend.position = "none")
+
+ggsave("img/03Rl18N.png", width = 14, height = 10, units = "cm")
+```
+
+
+```{r}
+mpg |> 
+  ggplot() +
+  aes(x = class |> fct_infreq(), fill = class |> fct_infreq()) +
+  labs(x = "class") +
+  geom_bar() +
+  theme_classic() +
+  theme(legend.position = "none")
+
+```
+  
+### création d'un graphique circulaire  
+```{r}
+mpg |> 
+  count(class) |> 
+  ggplot() +
+  aes(x = "", y = n, fill = class) +
+  geom_bar(stat = "identity", color = "white") +
+  geom_text(aes(label = class), position = position_stack(vjust = 0.5)) +
+  coord_polar("y") +
+  theme_void() +
+  theme(legend.position = "none")
+  
+ggsave("img/03Rl19N.png", width = 10, height = 10, units = "cm")
+
+```
+  
+### treemap  
+```{r}
+library(treemap)
+treemap(
+  mpg |> 
+    count(manufacturer),
+  index = "manufacturer",
+  vSize = "n",
+  title = "Les constructeurs"
+)
+```
+
+### nuage de mots  
+```{r}
+# création du tableau
+tableau_constructeur <- mpg |> 
+  count(manufacturer)
+
+# création du nuage de mots
+wordcloud::wordcloud(
+    words = tableau_constructeur$manufacturer,
+    freq = tableau_constructeur$n,
+    colors = c("gold", "blue", "dark red")
+  )
+```
+  
+  
+## variable quantitative  
+### valeurs de dispersion
+```{r}
+summary(mpg$cty)
+min(mpg$cty)
+median(mpg$cty)
+mean(mpg$cty)
+max(mpg$cty)
+sd(mpg$cty)
+var(mpg$cty)
+
+#calcul de l'étendue
+range(mpg$cty) |> diff()
+max(mpg$cty) - min(mpg$cty)
+
+```
+
+### nuage de points
+```{r}
+ggplot(
+  data = mpg
+) +
+  aes(x = cty, y = "") +
+  geom_point() +
+  theme_bw()
+```
+
+### données de positionnement  
+```{r}
+mpg |> 
+  ggplot() +
+  aes(x = cty, y = "") +
+  annotate("segment", x = mean(mpg$cty) + sd(mpg$cty), xend = mean(mpg$cty) - sd(mpg$cty), y = "", yend = "") +
+  annotate("point", x = mean(mpg$cty), y = "", color = "red",  size = 4) +
+  xlim(9,35) +
+  theme_classic()
+
+ggsave("img/03Rl24N.png", width = 14, height = 8, units = "cm")
+```
+
+### histogramme avec la moyenne et la médiane  
+```{r}
+ggplot(
+  data = mpg
+) +
+  aes(x = cty) +
+  geom_histogram() +
+  geom_vline(aes(xintercept = mean(cty)), color = "red") +
+  geom_vline(aes(xintercept = median(cty)), color = "blue") +
+  annotate("text", x = mean(mpg$cty) - 2, y = 30, label = "Moyenne", color = "red") +
+  annotate("text", x = median(mpg$cty) + 2, y = 30, label = "Médiane", color = "blue") +
+  theme_classic()
+
+ggsave("img/03Rl25N.png", width = 14, height = 8, units = "cm")
+```
+
+### Nuage de points avec la moyenne et la médiane  
+```{r}
+ggplot(iris) +
+  aes(x = Petal.Length, y = "") +
+  geom_point() +
+  geom_point(aes(mean(Petal.Length)), color = "red", size = 4) +
+  geom_point(aes(median(Petal.Length)), color = "blue", size = 4) +
+  geom_text(
+    aes(
+      mean(Petal.Length), 
+      label = "Moyenne"
+      ), 
+    nudge_y = 0.5, 
+    color = "red"
+    ) +
+  geom_text(
+    aes(
+      median(Petal.Length), 
+      label = "Médiane"
+      ), 
+    nudge_y = - 0.5, 
+    color = "blue"
+    ) +
+  theme_classic()
+```
+
+### nuage de point dispersé  
+```{r}
+ggplot(
+  data = iris
+) +
+  aes(x = Petal.Length, y = "") +
+  geom_jitter() +
+  geom_point(aes(mean(Petal.Length)), color = "red", size = 4) +
+  geom_point(aes(median(Petal.Length)), color = "blue", size = 4) +
+  geom_text(aes(mean(Petal.Length), label = "Moyenne"), nudge_y = 0.5, color = "red") +
+  geom_text(aes(median(Petal.Length), label = "Médiane"), nudge_y = - 0.5, color = "blue") +
+  theme_classic()
+```
+
+
+```{r}
+iris |> 
+  count(Petal.Length) |> 
+  ggplot() +
+  aes(x = Petal.Length, y = "", size = n) +
+  geom_point() +
+  geom_point(aes(weighted.mean(Petal.Length, n), y = ""), color = "red", inherit.aes = FALSE) +
+  geom_point(aes(matrixStats::weightedMedian(Petal.Length, n), y = ""), color = "blue", inherit.aes = FALSE) +
+  geom_text(aes(weighted.mean(Petal.Length, n), y = "", label = "Moyenne pondérée"), nudge_y = 0.5, color = "red", inherit.aes = FALSE) +
+  geom_text(aes(matrixStats::weightedMedian(Petal.Length, n), y = "", label = "Médiane pondérée"), nudge_y = - 0.5, color = "blue", inherit.aes = FALSE) +
+  theme_classic()
+```
+
+
+### quantiles
+```{r}
+
+quantile(x = mpg$cty)
+
+# déciles
+quantile(
+  x = mpg$cty,
+  probs = seq(0, 1, 0.1)
+)
+
+# centiles
+centile <- quantile(
+  x = mpg$cty,
+  probs = seq(0, 1, 0.01)
+)
+centile
+
+```
+  
+### boîte à moustaches    
+```{r}
+# simple
+ggplot(data = mpg) +
+  geom_boxplot(aes(cty))
+
+# avec commentaires
+quartile <- quantile(mpg$cty)
+
+ggplot(data = mpg) +
+  geom_boxplot(aes(cty)) +
+  annotate(
+    "text", 
+    x = quartile[1],
+    y = - 0.2 ,
+    label = "Maximum entre :\nQ1 - 1,5 * (Q3 - Q1)\net Minimum (ici)"
+  ) +
+  annotate(
+    "text",
+    x = quartile[2],
+    y = 0.5,
+    label = "Q1\n(25%)"
+  ) +
+  annotate(
+    "text",
+    x = quartile[3],
+    y = - 0.55,
+    label = "Q2\n(50%)\nMédiane"
+  ) +
+  annotate(
+    "text",
+    x = quartile[4],
+    y = 0.5,
+    label = "Q3\n(75%)"
+  ) +
+  annotate(
+    "text",
+    x = 26, 
+    y = 0.2, 
+    label = "Minimum entre :\nQ3 + 1,5 * (Q3 - Q1) (ici)\net Maximum") +
+  annotate(
+    "text",
+    x = 31,
+    y = -0.1,
+    label = "Valeurs extrêmes",
+    color = "red"
+  ) +
+  xlim(5, 36) +
+  ylim(-0.65, 0.6) +
+  ylab("") +
+  theme_classic()
+```
+
+### visualisation des deciles
+```{r}
+
+cty_decile <- quantile(
+  x = mpg$cty,
+  probs = seq(0, 1, 0.1)
+)
+
+tibble(
+  pourcentage = names(cty_decile),
+  cty_deciles = cty_decile
+) |> 
+  ggplot() +
+  aes(
+    x = pourcentage |> fct_inorder(),
+    y = cty_decile
+  ) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "",
+    y = "nombre de modèles concernés"
+  ) +
+  theme_classic()
+
+ggsave("img/03Rl31N.png", width = 14, height = 8, units = "cm")
+```
+  
+### filtrer sur les valeurs extremes  
+```{r}
+mpg |> 
+  filter(
+  cty > 26
+)
+
+```
+  
+### boite à moustaches avec points dispersés  
+```{r}
+ggplot(data = mpg) +
+  aes(x= cty, y = "") +
+  geom_boxplot() +
+  geom_jitter(color = "grey") +
+  theme_classic()
+```
+  
+# Statistiques descriptives bivariées  
+## 2 variables quantitatives  
+### test de Pearson
+```{r}
+cor.test(mpg$cty, mpg$hwy)
+```
+
+### graphique
+```{r}
+ggplot(mpg) +
+  aes(
+    x = cty,
+    y = hwy
+  ) +
+  geom_point() +
+  theme_classic()
+```
+  
+## Une quanti et une quali  
+### test du Khi-2  
+```{r}
+chisq.test(mpg$cty, mpg$class)
+```
+
+### représentation graphique avec forme et couleur   
+```{r}
+ggplot(mpg) +
+  aes(x = cty, y = "", color = class, shape = class) +
+  geom_jitter() + 
+  scale_shape_manual(values = c(0:6)) +
+  theme_classic()
+
+ggsave("img/03Rl35N.png", width = 14, height = 8, units = "cm")
+```
+
+### une ligne par type de véhicule  
+```{r}
+ggplot(mpg) +
+  aes(x = cty, y = class, shape = class) +
+  geom_jitter() +
+  scale_shape_manual(values = c(0:6)) +
+  theme_classic() +
+  theme(legend.position = "none")
+
+ggsave("img/03Rl36N.png", width = 14, height = 8, units = "cm")
+```
+
+### avec des boîtes à moustaches  
+```{r}
+ggplot(mpg) +
+  aes(x = cty, y = reorder(class, cty), color = reorder(class, cty)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.3) + 
+  labs(
+    y = "class",
+    color = "class"
+  ) +
+  theme_classic() +
+  theme(legend.position = "none")
+
+ggsave("img/03Rl37N.png", width = 14, height = 8, units = "cm")
+
+```
+  
+## 2 variables qualitatives  
+### tableau de contingence
+```{r}
+mpg |> 
+  count(manufacturer, class) |> 
+  pivot_wider(names_from = class, values_from = n)
+```
+
+### carte des points chauds  
+```{r}
+mpg |> 
+  count(manufacturer, class) |>
+  ggplot() +
+  aes(x = class, y = manufacturer, fill = n) +
+  geom_tile() +
+  theme_classic()
+```
+  
+# Valeurs manquantes  
+```{r}
+
+library(naniar)
+
+gg_miss_var(riskfactors)
+gg_miss_var(riskfactors, show_pct = TRUE)
+
+gg_miss_upset(riskfactors)
+```
+
+  
+  
