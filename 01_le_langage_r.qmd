@@ -13,3 +13,363 @@ Ce chapitre reprends les codes du chapitre 1 sur ***le langage R*** du livre **L
 tibble::view(women)
 ```
 
+# Installation de R et RStudio  
+## installation de l'addin `{esquisse}`    
+```{r}
+#| eval: false
+install.packages("esquisse")
+```
+
+## installation du `{tidyverse}`  
+```{r}
+#| eval: false
+
+install.packages("tidyverse")
+```
+
+# Fonctions et package  
+## utilisation du préfixe  
+```{r}
+#| error: true
+
+# ne fonctionne pas 
+data.table(
+  x = seq(from = 1, to = 50, by = 5) 
+)
+
+```
+
+```{r}
+# fonctionne 
+data.table::data.table(
+  x = seq(from = 1, to = 50, by = 5)
+)
+
+```
+
+## affichage de la page d'aide  
+```{r}
+#| eval: false
+
+?seq
+```
+
+# Utilisation du format projet  
+## Création d'un dossier data  
+```{r}
+#| eval: false
+
+dir.create("data")
+```
+
+
+
+# Initiation au codage en R  
+## Nomenclature du langage R  
+### Calcul d'une somme  
+on calcule la somme de 3+8
+```{r}
+3 + 8
+```
+  
+### Création d'un objet  
+```{r}
+ceci_est_un_objet <- 4.5 + 1.1
+```
+
+afficher un objet dans la console en utilisant son nom
+```{r}
+ceci_est_un_objet
+```
+
+il est possible de faire de l'utiliser  
+```{r}
+ceci_est_un_objet * 2
+```
+   
+mais cela ne modifie pas l'objet  
+```{r}
+ceci_est_un_objet
+```
+
+### Modification d'un objet  
+```{r}
+ceci_est_un_objet <- ceci_est_un_objet * 2
+```
+
+
+```{r}
+ceci_est_un_objet
+```
+  
+### Création séquence de nombre  
+Pour afficher la page d'aide, il faut utiliser `?seq`  
+```{r}
+seq(from = 1, to = 50, by = 5)
+```
+
+## Structure et type des données  
+### Nature des données  
+```{r}
+class(iris)
+```
+
+```{r}
+class(iris$Species)
+```
+Le signe `$` permet d'accéder à une colonne ou un élément de liste.  
+```{r}
+class(iris$Petal.Width)
+```
+
+
+### Structure des données 
+création d'un vecteur  
+```{r}
+(vecteur <- c(1:10))
+```
+
+création d'une matrice  
+```{r}
+(matrice <- matrix(data = 1:10, ncol = 2))
+```
+
+création d'un tableau de données  
+```{r}
+(tableau_de_donnees <- data.frame(vecteur, matrice))
+```
+
+création d'une liste  
+```{r}
+(liste <- list(vecteur, LETTERS[1:5], tableau_de_donnees))
+```
+  
+## Importer des données  
+### Jeux de données disponibles dans R  
+```{r}
+#| eval: false  
+data()
+```
+
+### Format `csv`  
+Création d'un fichier csv  
+```{r}
+write.csv(
+  mtcars, 
+  "data/jdd_voiture.csv"
+)
+```
+  
+lecture d'un fichier csv  
+```{r}
+jdd_voiture <- read.csv(
+  file = "data/jdd_voiture.csv",
+  row.names = "X"
+)
+
+```
+  
+visualisation du jeu de données
+```{r}
+#| eval: false
+tibble::view(jdd_voiture)
+```
+
+création d'un résumé du jeu de données  
+```{r}
+summary(jdd_voiture)
+```
+  
+### Format `xlsx`  
+creation d'un fichier excel  
+```{r}
+library(openxlsx)
+
+write.xlsx(
+  women, 
+  "data/jdd_femme.xlsx"
+)
+
+```
+  
+lire un fichier excel  
+```{r}
+
+jdd_femme <- read.xlsx(
+  "data/jdd_femme.xlsx"
+)
+
+```
+  
+### Format `txt`  
+Lecture de données depuis un site internet  
+```{r}
+library(rvest)
+page <- read_html("https://fr.m.wikisource.org/wiki/Lettres_de_la_comtesse_de_S%C3%A9gur/Texte_entier") |> 
+  html_nodes("h1") |> 
+  html_text()
+```
+
+Enregistrement dans un fichier `txt`  
+```{r}
+write(page, "data/titre_segur.txt")
+# ou
+page |> 
+  write("data/titre_segur.txt")
+```
+  
+lecture d'un fichier txt  
+```{r}
+
+titre_segur <- read.delim(
+  "data/titre_segur.txt", 
+  header = FALSE
+)
+```
+
+## utilisation du pipe natif  
+sans le pipe, en créant des objets  
+```{r}
+# création d'objets intermédiaire
+etape1 <- c(1:30)
+etape2 <- sqrt(etape1)
+etape3 <- mean(etape2)
+floor(etape3)
+
+# sans pipe
+floor(mean(sqrt(c(1:10)*3)))
+# équivalent à
+floor(
+  mean(
+    sqrt(
+      c(1:30)
+    )
+  )
+)
+```
+
+
+```{r}
+# avec pipe
+c(1:30) |> 
+  sqrt() |> 
+  mean() |> 
+  floor()
+```
+
+# Travailler sur des jeux de données     
+## Manipulation des données dans R  
+### Sélection ligne(s) et/ou colonne(s)  
+langage de base  
+```{r}
+(exemple <- matrix(data = c(12, 53, 6, 8, 97, 42), nrow = 3))
+exemple[3,2]
+colnames(exemple) <- list("premiere_colonne", "deuxieme_colonne")
+rownames(exemple) <- c("premiere_ligne", "deuxieme_ligne", "troisieme_ligne")
+exemple
+exemple["troisieme_ligne", "deuxieme_colonne"]
+```
+
+exemple en `{tidyverse}`  
+```{r}
+library(tidyverse)
+
+(exemple_tibble <- tibble(
+  premiere_colonne = c(12, 53, 6),
+  deuxieme_colonne = c(8, 97, 42)
+))
+exemple_tibble[3,2]
+exemple_tibble[3, "deuxieme_colonne"]
+```
+
+### Sélection de plusieurs lignes ou colonnes  
+```{r}
+exemple[c(1,3),]
+exemple_tibble[c(1:2), 1]
+```
+
+### Utilisation des parenthèses autours du code  
+```{r}
+test_affichage <- "Ceci est un test pour montrer l'utilisation des parenthèses"
+(test_affichage <- "Ceci est un test pour montrer l'utilisation des parenthèses")
+```
+  
+### Choix de lignes et colonnes  
+```{r}
+
+iris[iris$Species == "setosa", ]
+iris[iris$Species == "setosa", "Sepal.Length"]
+iris[iris$Species == "setosa" |  iris$Sepal.Length < 5, ]
+iris[iris$Species == "setosa" & iris$Sepal.Length < 5, ]
+
+filter(iris, Species == "setosa")
+filter(iris, Species == "setosa") |> select(Sepal.Length)
+filter(iris, Species == "setosa" | iris$Sepal.Length < 5)
+filter(iris, Species == "setosa" & iris$Sepal.Length < 5)
+
+```
+  
+## Jointure  
+### création des tables  
+```{r}
+(table_gauche <- tibble(
+  id = LETTERS[1:3],
+  x = c(5, 9, 7),
+  y = c(1, 4, 8)
+))
+
+(table_droite <- tibble(
+  identite = LETTERS[c(1, 2, 4)],
+  z = c(4, 7, 6),
+  w = c(2, 8, 6)
+))
+```
+
+### jointures
+```{r jointure}
+inner_join(
+  table_gauche,
+  table_droite,
+  by = c("id" = "identite")
+)
+
+full_join(
+  table_gauche,
+  table_droite,
+  by = c("id" = "identite")
+)
+
+left_join(
+  table_gauche,
+  table_droite,
+  by = c("id" = "identite")
+)
+
+right_join(
+  table_gauche,
+  table_droite,
+  by = c("id" = "identite")
+)
+```
+
+### vérification
+```{r}
+summary(table_gauche)
+summary(table_droite)
+
+table_gauche |> 
+  count(id) |> 
+  filter(n > 1)
+table_droite |> 
+  count(identite) |> 
+  filter(n > 1)
+
+table_gauche$id |> class()
+table_droite$identite |> class()
+
+nrow(table_gauche)
+nrow(table_droite)
+table_gauche$id %in% table_droite$identite |> sum()
+
+```
+

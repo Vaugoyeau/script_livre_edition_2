@@ -1,0 +1,38 @@
+---
+title: "Réaliser une analyse de données avec R"
+author: "Marie VAUGOYEAU"
+format: 
+  docx: 
+    toc-title: "Sommaire"
+  typst: 
+    toc-title: "Dans ce rapport"
+toc: true
+number-sections: true
+---
+
+## Avant de commencer
+
+### Import des packages
+
+Il est conseillé d'*importer* tous les packages **dès le début** du script afin d'avoir moins de soucis dans la gestion des ***conflits*** (deux fonctions dans deux packages qui ont le même nom).  
+Pour réaliser les codes du livre, le {tidyverse} est à télécharger.
+
+### Import des données
+
+## Objectif de l'étude
+
+Le jeu de données ***iris*** contient `r nrow(iris)` lignes et `r ncol(iris)` variables.
+
+```{r}
+#| echo: false
+
+head(iris)
+```
+
+## Analyse descriptive
+
+### Analyse descriptive univariée
+
+### Analyse descriptive bivariée
+
+## Conclusion
