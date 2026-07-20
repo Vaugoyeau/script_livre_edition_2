@@ -8,27 +8,31 @@ title: "Chapitre 1 : Le langage R"
 
 Ce chapitre reprends les codes du chapitre 1 sur ***le langage R*** du livre **Langage R et Statistiques** : *Initiation à l'analyse de données* publié par les [éditions ENI](https://www.editions-eni.fr/livre/langage-r-et-statistiques-initiation-a-l-analyse-de-donnees-9782409036934) (2^ème^ édition).
 
-    
 ```{r}
 tibble::view(women)
 ```
 
-# Installation de R et RStudio  
-## installation de l'addin `{esquisse}`    
+# Installation de R et RStudio
+
+## installation de l'addin `{esquisse}`
+
 ```{r}
 #| eval: false
 install.packages("esquisse")
 ```
 
-## installation du `{tidyverse}`  
+## installation du `{tidyverse}`
+
 ```{r}
 #| eval: false
 
 install.packages("tidyverse")
 ```
 
-# Fonctions et package  
-## utilisation du préfixe  
+# Fonctions et package
+
+## utilisation du préfixe
+
 ```{r}
 #| error: true
 
@@ -47,69 +51,82 @@ data.table::data.table(
 
 ```
 
-## affichage de la page d'aide  
+## affichage de la page d'aide
+
 ```{r}
 #| eval: false
 
 ?seq
 ```
 
-# Utilisation du format projet  
-## Création d'un dossier data  
+# Utilisation du format projet
+
+## Création d'un dossier data
+
 ```{r}
 #| eval: false
 
 dir.create("data")
 ```
 
+# Initiation au codage en R
 
+## Nomenclature du langage R
 
-# Initiation au codage en R  
-## Nomenclature du langage R  
-### Calcul d'une somme  
+### Calcul d'une somme
+
 on calcule la somme de 3+8
+
 ```{r}
 3 + 8
 ```
-  
-### Création d'un objet  
+
+### Création d'un objet
+
 ```{r}
 ceci_est_un_objet <- 4.5 + 1.1
 ```
 
 afficher un objet dans la console en utilisant son nom
+
 ```{r}
 ceci_est_un_objet
 ```
 
-il est possible de faire de l'utiliser  
+il est possible de faire de l'utiliser
+
 ```{r}
 ceci_est_un_objet * 2
 ```
-   
-mais cela ne modifie pas l'objet  
+
+mais cela ne modifie pas l'objet
+
 ```{r}
 ceci_est_un_objet
 ```
 
-### Modification d'un objet  
+### Modification d'un objet
+
 ```{r}
 ceci_est_un_objet <- ceci_est_un_objet * 2
 ```
 
-
 ```{r}
 ceci_est_un_objet
 ```
-  
-### Création séquence de nombre  
-Pour afficher la page d'aide, il faut utiliser `?seq`  
+
+### Création séquence de nombre
+
+Pour afficher la page d'aide, il faut utiliser `?seq`
+
 ```{r}
 seq(from = 1, to = 50, by = 5)
 ```
 
-## Structure et type des données  
-### Nature des données  
+## Structure et type des données
+
+### Nature des données
+
 ```{r}
 class(iris)
 ```
@@ -117,50 +134,61 @@ class(iris)
 ```{r}
 class(iris$Species)
 ```
-Le signe `$` permet d'accéder à une colonne ou un élément de liste.  
+
+Le signe `$` permet d'accéder à une colonne ou un élément de liste.
+
 ```{r}
 class(iris$Petal.Width)
 ```
 
+### Structure des données
 
-### Structure des données 
-création d'un vecteur  
+création d'un vecteur
+
 ```{r}
 (vecteur <- c(1:10))
 ```
 
-création d'une matrice  
+création d'une matrice
+
 ```{r}
 (matrice <- matrix(data = 1:10, ncol = 2))
 ```
 
-création d'un tableau de données  
+création d'un tableau de données
+
 ```{r}
 (tableau_de_donnees <- data.frame(vecteur, matrice))
 ```
 
-création d'une liste  
+création d'une liste
+
 ```{r}
 (liste <- list(vecteur, LETTERS[1:5], tableau_de_donnees))
 ```
-  
-## Importer des données  
-### Jeux de données disponibles dans R  
+
+## Importer des données
+
+### Jeux de données disponibles dans R
+
 ```{r}
 #| eval: false  
 data()
 ```
 
-### Format `csv`  
-Création d'un fichier csv  
+### Format `csv`
+
+Création d'un fichier csv
+
 ```{r}
 write.csv(
   mtcars, 
   "data/jdd_voiture.csv"
 )
 ```
-  
-lecture d'un fichier csv  
+
+lecture d'un fichier csv
+
 ```{r}
 jdd_voiture <- read.csv(
   file = "data/jdd_voiture.csv",
@@ -168,20 +196,24 @@ jdd_voiture <- read.csv(
 )
 
 ```
-  
+
 visualisation du jeu de données
+
 ```{r}
 #| eval: false
 tibble::view(jdd_voiture)
 ```
 
-création d'un résumé du jeu de données  
+création d'un résumé du jeu de données
+
 ```{r}
 summary(jdd_voiture)
 ```
-  
-### Format `xlsx`  
-creation d'un fichier excel  
+
+### Format `xlsx`
+
+creation d'un fichier excel
+
 ```{r}
 library(openxlsx)
 
@@ -191,8 +223,9 @@ write.xlsx(
 )
 
 ```
-  
-lire un fichier excel  
+
+lire un fichier excel
+
 ```{r}
 
 jdd_femme <- read.xlsx(
@@ -200,9 +233,11 @@ jdd_femme <- read.xlsx(
 )
 
 ```
-  
-### Format `txt`  
-Lecture de données depuis un site internet  
+
+### Format `txt`
+
+Lecture de données depuis un site internet
+
 ```{r}
 library(rvest)
 page <- read_html("https://fr.m.wikisource.org/wiki/Lettres_de_la_comtesse_de_S%C3%A9gur/Texte_entier") |> 
@@ -210,15 +245,17 @@ page <- read_html("https://fr.m.wikisource.org/wiki/Lettres_de_la_comtesse_de_S%
   html_text()
 ```
 
-Enregistrement dans un fichier `txt`  
+Enregistrement dans un fichier `txt`
+
 ```{r}
 write(page, "data/titre_segur.txt")
 # ou
 page |> 
   write("data/titre_segur.txt")
 ```
-  
-lecture d'un fichier txt  
+
+lecture d'un fichier txt
+
 ```{r}
 
 titre_segur <- read.delim(
@@ -227,8 +264,10 @@ titre_segur <- read.delim(
 )
 ```
 
-## utilisation du pipe natif  
-sans le pipe, en créant des objets  
+## utilisation du pipe natif
+
+sans le pipe, en créant des objets
+
 ```{r}
 # création d'objets intermédiaire
 etape1 <- c(1:30)
@@ -248,7 +287,6 @@ floor(
 )
 ```
 
-
 ```{r}
 # avec pipe
 c(1:30) |> 
@@ -257,10 +295,14 @@ c(1:30) |>
   floor()
 ```
 
-# Travailler sur des jeux de données     
-## Manipulation des données dans R  
-### Sélection ligne(s) et/ou colonne(s)  
-langage de base  
+# Travailler sur des jeux de données
+
+## Manipulation des données dans R
+
+### Sélection ligne(s) et/ou colonne(s)
+
+langage de base
+
 ```{r}
 (exemple <- matrix(data = c(12, 53, 6, 8, 97, 42), nrow = 3))
 exemple[3,2]
@@ -270,7 +312,8 @@ exemple
 exemple["troisieme_ligne", "deuxieme_colonne"]
 ```
 
-exemple en `{tidyverse}`  
+exemple en `{tidyverse}`
+
 ```{r}
 library(tidyverse)
 
@@ -282,19 +325,22 @@ exemple_tibble[3,2]
 exemple_tibble[3, "deuxieme_colonne"]
 ```
 
-### Sélection de plusieurs lignes ou colonnes  
+### Sélection de plusieurs lignes ou colonnes
+
 ```{r}
 exemple[c(1,3),]
 exemple_tibble[c(1:2), 1]
 ```
 
-### Utilisation des parenthèses autours du code  
+### Utilisation des parenthèses autours du code
+
 ```{r}
 test_affichage <- "Ceci est un test pour montrer l'utilisation des parenthèses"
 (test_affichage <- "Ceci est un test pour montrer l'utilisation des parenthèses")
 ```
-  
-### Choix de lignes et colonnes  
+
+### Choix de lignes et colonnes
+
 ```{r}
 
 iris[iris$Species == "setosa", ]
@@ -308,9 +354,11 @@ filter(iris, Species == "setosa" | iris$Sepal.Length < 5)
 filter(iris, Species == "setosa" & iris$Sepal.Length < 5)
 
 ```
-  
-## Jointure  
-### création des tables  
+
+## Jointure
+
+### création des tables
+
 ```{r}
 (table_gauche <- tibble(
   id = LETTERS[1:3],
@@ -326,6 +374,7 @@ filter(iris, Species == "setosa" & iris$Sepal.Length < 5)
 ```
 
 ### jointures
+
 ```{r jointure}
 inner_join(
   table_gauche,
@@ -353,6 +402,7 @@ right_join(
 ```
 
 ### vérification
+
 ```{r}
 summary(table_gauche)
 summary(table_droite)
@@ -372,4 +422,3 @@ nrow(table_droite)
 table_gauche$id %in% table_droite$identite |> sum()
 
 ```
-

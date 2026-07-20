@@ -1,0 +1,27 @@
+color: 
+  palette:
+    jaune-fonce: "#dee114"
+    jaune-flashy: "#e9ec23"
+    bleu: "#3977a0"
+  primary: jaune-fonce  
+  foreground: bleu  
+
+
+
+typography:
+  fonts:
+    - family: ComicMono
+      source: file
+      files:
+        - path: _fonts/ComicMono.tff
+  base: ComicMono
+  headings:
+    family: ComicMono
+    color: primary
+  
+logo:
+  images:
+    mstats: 
+      path: "img/logo_quarto.png"
+      
+      
