@@ -6,17 +6,15 @@ color:
   primary: jaune-fonce  
   foreground: bleu  
 
-
-
 typography:
   fonts:
-    - family: ComicMono
+    - family: "Comic Mono"
       source: file
       files:
         - path: _fonts/ComicMono.tff
-  base: ComicMono
+  base: "Comic Mono"
   headings:
-    family: ComicMono
+    family: "Comic Mono"
     color: primary
   
 logo:
