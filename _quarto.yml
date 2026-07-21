@@ -10,7 +10,6 @@ format:
     toc: true
     section-numbering: 1.1.a
     lang: fr
-    mainfont: ComicMono
     logo: 
       path: mstats
       location: left-top

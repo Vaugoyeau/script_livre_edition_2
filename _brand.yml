@@ -8,13 +8,12 @@ color:
 
 typography:
   fonts:
-    - family: "Comic Mono"
-      source: file
-      files:
-        - path: _fonts/ComicMono.tff
-  base: "Comic Mono"
+    - family: Inter
+      source: google
+      weight: [400, 600, 700]
+  base: Inter
   headings:
-    family: "Comic Mono"
+    family: Inter
     color: primary
   
 logo:
